@@ -72,10 +72,11 @@ module CoBot
       token = ENV["DISCORD_BOT_TOKEN"].to_s
       raise "DISCORD_BOT_TOKEN is not set" if token.strip.empty?
 
-      # `servers` (GUILDS) intent is enough: guild list on connect + GUILD_CREATE.
-      # Interactions arrive regardless of intents; single-member REST fetches
-      # (for role assignment) don't need the privileged members intent.
-      @bot = Discordrb::Bot.new(token: token, intents: %i[servers])
+      # servers (GUILDS): guild list on connect + GUILD_CREATE.
+      # server_members (PRIVILEGED): GUILD_MEMBER_UPDATE / _REMOVE so we can
+      # auto-sync memberships when team roles are granted/removed manually.
+      # Enable the Server Members Intent in the Developer Portal for this to work.
+      @bot = Discordrb::Bot.new(token: token, intents: %i[servers server_members])
       install
     end
 
@@ -100,6 +101,18 @@ module CoBot
 
       @bot.ready { |_event| self.class.handle("ready") { sync_all_guilds } }
       @bot.server_create { |event| self.class.handle("server_create") { sync_guild(event.server) } }
+
+      # Auto-sync memberships from manual role changes (needs Server Members intent).
+      @bot.member_update do |event|
+        self.class.handle("member_update") do
+          Memberships::RoleSync.reconcile(server: event.server, member: event.user, roles: event.roles)
+        end
+      end
+      @bot.member_leave do |event|
+        self.class.handle("member_leave") do
+          Memberships::RoleSync.on_leave(server: event.server, user_id: event.user&.id)
+        end
+      end
     end
 
     def install_command_handlers
