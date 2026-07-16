@@ -35,7 +35,9 @@ module CoBot
           break if @shutdown
 
           Rails.logger.warn("[co-bot] gateway stopped; restarting in #{backoff}s")
-          sleep backoff
+          # Interruptible: a Ruby-block signal trap does NOT abort Kernel#sleep,
+          # so poll @shutdown each second to exit within ~1s of a stop signal.
+          backoff.times { break if @shutdown; sleep 1 }
           backoff = [ backoff * 2, 30 ].min
           reset!
         end
@@ -153,7 +155,14 @@ module CoBot
     # Set the current guild (tenant) for the duration of the interaction, so all
     # queries auto-scope to this server via acts_as_tenant.
     def with_tenant(event)
-      guild = Guild.sync_from_discord(id: event.server&.id, name: event.server&.name)
+      # event.server is nil in DMs or where the bot lacks the bot scope (e.g. an
+      # old persistent button after the bot was removed). Never persist a nil id.
+      unless event.server
+        event.respond(content: "I can't find this server — I may have been removed from it.", ephemeral: true) rescue nil
+        return
+      end
+
+      guild = Guild.sync_from_discord(id: event.server.id, name: event.server.name)
       ActsAsTenant.with_tenant(guild) { yield guild }
     end
 

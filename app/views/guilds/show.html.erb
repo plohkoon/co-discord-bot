@@ -23,8 +23,8 @@
         <div>
           <div class="font-medium text-slate-100"><%= team.name %></div>
           <div class="text-xs text-slate-500">
-            <%= pluralize(team.application_questions.count, "question") %> ·
-            <%= team.team_applications.pending.count %> pending
+            <%= pluralize(@question_counts[team.id].to_i, "question") %> ·
+            <%= @pending_counts[team.id].to_i %> pending
           </div>
         </div>
         <span class="text-slate-500">→</span>

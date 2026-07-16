@@ -23,13 +23,19 @@ class ApplicationController < ActionController::Base
     redirect_to login_path, alert: "Please sign in with Discord to continue."
   end
 
-  # Guilds the current user can manage (co-bot installed + Manage Server),
-  # captured at login. Array of { "id", "name", "icon" }.
+  # Guild ids the user can manage (co-bot installed + Manage Server), captured
+  # at login. Names/details come from the Guild table.
+  def manageable_guild_ids
+    Array(session[:guild_ids]).map(&:to_s)
+  end
+
   def manageable_guilds
-    session[:guilds] || []
+    return Guild.none if manageable_guild_ids.empty?
+
+    Guild.where(id: manageable_guild_ids).order(:name)
   end
 
   def can_manage_guild?(guild_id)
-    manageable_guilds.any? { |g| g["id"].to_s == guild_id.to_s }
+    manageable_guild_ids.include?(guild_id.to_s)
   end
 end

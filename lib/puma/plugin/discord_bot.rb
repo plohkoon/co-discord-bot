@@ -49,8 +49,9 @@ Puma::Plugin.create do
     log "stopping co-bot gateway (pid #{@bot_pid})"
     Process.kill(:INT, @bot_pid)
     Process.wait(@bot_pid)
+    @bot_pid = nil
   rescue Errno::ESRCH, Errno::ECHILD
-    # already gone
+    @bot_pid = nil # so monitor_bot doesn't misfire on the reaped pid during a phased restart
   end
 
   # In the Puma master (background thread): watch the bot child.

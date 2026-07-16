@@ -12,7 +12,9 @@ class SessionsController < ApplicationController
 
     reset_session
     session[:user_id] = user.id
-    session[:guilds]  = Discord::ManageableGuilds.call(token: auth.credentials.token)
+    # Store only ids (names come from the Guild table) to keep the session cookie
+    # well under CookieStore's 4KB limit — the full array can overflow it.
+    session[:guild_ids] = Discord::ManageableGuilds.call(token: auth.credentials.token).map { |g| g["id"] }
 
     redirect_to root_path, notice: "Signed in as #{user.display_name}."
   rescue => e
