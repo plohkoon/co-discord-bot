@@ -5,16 +5,6 @@ module Commands
   class Base
     Option = Struct.new(:type, :name, :description, :required, :autocomplete, :channel_types, keyword_init: true)
 
-    # Every subclass registers itself so CoBot::CommandRegistry can discover it.
-    def self.inherited(subclass)
-      super
-      Commands::Base.registry << subclass
-    end
-
-    def self.registry
-      @registry ||= []
-    end
-
     class << self
       def description(text = nil)
         text ? @description = text : @description
@@ -45,12 +35,6 @@ module Commands
         @component_spec = { kind: kind.to_sym, key: key.to_s, params: Array(params).map(&:to_sym) }
       end
       def component_spec = @component_spec
-      def component? = !@component_spec.nil?
-
-      # Discord path from the class namespace.
-      def path
-        @path ||= name.sub(/\ACommands::/, "").split("::").map(&:underscore)
-      end
     end
 
     attr_reader :event, :guild, :params

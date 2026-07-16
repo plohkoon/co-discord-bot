@@ -99,13 +99,12 @@ module CoBot
     end
 
     def install_commands
-      CommandRegistry.commands.each do |klass|
-        path = klass.path
+      CommandRegistry.dispatch_table.each do |path, klass|
         handler = ->(event) { dispatch(klass, event) }
         case path.size
-        when 1 then @bot.application_command(path[0].to_sym, &handler)
-        when 2 then @bot.application_command(path[0].to_sym).subcommand(path[1].to_sym, &handler)
-        when 3 then @bot.application_command(path[0].to_sym).group(path[1].to_sym).subcommand(path[2].to_sym, &handler)
+        when 1 then @bot.application_command(path[0], &handler)
+        when 2 then @bot.application_command(path[0]).subcommand(path[1], &handler)
+        when 3 then @bot.application_command(path[0]).group(path[1]).subcommand(path[2], &handler)
         end
       end
     end
