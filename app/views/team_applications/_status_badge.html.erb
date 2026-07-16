@@ -1,0 +1,8 @@
+<% styles = {
+     "pending"  => "bg-amber-500/15 text-amber-300",
+     "accepted" => "bg-emerald-500/15 text-emerald-300",
+     "rejected" => "bg-red-500/15 text-red-300"
+   } %>
+<span class="text-xs px-2 py-0.5 rounded-full <%= styles[status] || "bg-slate-700 text-slate-300" %>">
+  <%= status.to_s.capitalize %>
+</span>

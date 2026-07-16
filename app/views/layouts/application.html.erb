@@ -1,30 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html class="h-full">
   <head>
-    <title><%= content_for(:title) || "Co Bot" %></title>
+    <title><%= content_for(:title) || "co-bot" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Co Bot">
-    <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
     <%= yield :head %>
 
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
-    <main class="container mx-auto mt-28 px-5 flex">
+  <body class="h-full bg-slate-950 text-slate-200 antialiased">
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur">
+      <div class="mx-auto max-w-5xl px-5 h-14 flex items-center justify-between">
+        <%= link_to "co-bot", root_path, class: "font-semibold tracking-tight text-slate-100" %>
+        <% if logged_in? %>
+          <div class="flex items-center gap-3 text-sm">
+            <% if current_user.avatar_url %>
+              <%= image_tag current_user.avatar_url, alt: "", class: "w-7 h-7 rounded-full" %>
+            <% end %>
+            <span class="text-slate-300"><%= current_user.display_name %></span>
+            <%= button_to "Sign out", logout_path, method: :delete,
+                  class: "text-slate-400 hover:text-slate-200 transition" %>
+          </div>
+        <% end %>
+      </div>
+    </header>
+
+    <% if flash.any? %>
+      <div class="mx-auto max-w-5xl px-5 mt-4 space-y-2">
+        <% flash.each do |type, message| %>
+          <div class="rounded-lg px-4 py-2 text-sm <%= type.to_s == "alert" ? "bg-red-500/10 text-red-300 border border-red-500/30" : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" %>">
+            <%= message %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <main class="mx-auto max-w-5xl px-5 py-8">
       <%= yield %>
     </main>
   </body>

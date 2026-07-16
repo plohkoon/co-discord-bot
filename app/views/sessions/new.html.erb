@@ -1,0 +1,13 @@
+<% content_for :title, "Sign in · co-bot" %>
+
+<div class="max-w-md mx-auto text-center py-20">
+  <h1 class="text-2xl font-semibold text-slate-100">co-bot dashboard</h1>
+  <p class="mt-2 text-slate-400">Manage your Discord teams and review applications.</p>
+
+  <div class="mt-8">
+    <%= button_to "/auth/discord", method: :post,
+          class: "inline-flex items-center gap-2 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] px-5 py-2.5 font-medium text-white transition" do %>
+      Sign in with Discord
+    <% end %>
+  </div>
+</div>

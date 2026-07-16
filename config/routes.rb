@@ -1,14 +1,21 @@
 Rails.application.routes.draw do
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  # Health check for load balancers / uptime monitors.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+  root "dashboard#index"
 
-  # Defines the root path route ("/")
-  # root "posts#index"
+  # --- Auth ---
+  get  "/login",  to: "sessions#new",     as: :login
+  delete "/logout", to: "sessions#destroy", as: :logout
+  # Discord OAuth (the login button POSTs to /auth/discord, handled by OmniAuth).
+  get   "/auth/discord/callback", to: "sessions#create"
+  match "/auth/failure",          to: "sessions#failure", via: %i[get post]
+
+  # --- Dashboard (per-guild, tenant-scoped) ---
+  resources :guilds, only: :show do
+    resources :teams, only: :show do
+      resources :questions, only: %i[create update destroy], controller: "team_questions"
+    end
+    resources :applications, only: %i[index show], controller: "team_applications"
+  end
 end
