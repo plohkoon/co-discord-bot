@@ -50,6 +50,10 @@ module Discord
       post("/webhooks/#{application_id}/#{token}", "content" => content, "flags" => ephemeral ? 64 : 0)
     end
 
+    def create_message(channel_id, payload) = post("/channels/#{channel_id}/messages", payload)
+
+    def edit_message(channel_id, message_id, payload) = patch("/channels/#{channel_id}/messages/#{message_id}", payload)
+
     private
 
     def get(path)
@@ -57,7 +61,15 @@ module Discord
     end
 
     def post(path, body)
-      request = Net::HTTP::Post.new(URI("#{BASE}#{path}"))
+      write(Net::HTTP::Post, path, body)
+    end
+
+    def patch(path, body)
+      write(Net::HTTP::Patch, path, body)
+    end
+
+    def write(verb, path, body)
+      request = verb.new(URI("#{BASE}#{path}"))
       request["Content-Type"] = "application/json"
       request.body = JSON.generate(body)
       perform(request, path)

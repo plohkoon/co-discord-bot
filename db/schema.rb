@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_230323) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_235222) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -71,6 +71,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_230323) do
     t.bigint "discord_user_id", null: false
     t.string "discord_username", default: "", null: false
     t.bigint "guild_id", null: false
+    t.integer "reminder_stage", default: 0, null: false
     t.bigint "review_channel_id"
     t.bigint "review_message_id"
     t.integer "source", default: 0, null: false

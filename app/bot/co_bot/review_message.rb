@@ -36,11 +36,18 @@ module CoBot
       accepted = application.accepted?
       Discordrb::Webhooks::Embed.new(
         title: "Application — #{application.team.name} · #{accepted ? 'Accepted' : 'Rejected'}",
-        description: "From #{application.applicant_mention}\n#{accepted ? 'Accepted' : 'Rejected'} by <@#{application.decided_by_discord_id}>",
+        description: "From #{application.applicant_mention}\n#{decided_line(application)}",
         color: accepted ? ACCEPT : REJECT,
         fields: answer_fields(application),
         timestamp: application.decided_at || application.created_at
       )
+    end
+
+    # nil decided_by = the system decided (e.g. the 7-day auto-reject sweep).
+    def decided_line(application)
+      verb = application.accepted? ? "Accepted" : "Rejected"
+      actor = application.decided_by_discord_id
+      actor ? "#{verb} by <@#{actor}>" : "#{verb} automatically — no decision within 7 days"
     end
 
     def decision_view(application)
