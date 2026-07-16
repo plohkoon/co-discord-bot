@@ -1,11 +1,10 @@
-# Shared behaviour for every table scoped to a Discord guild. `guild_id` holds
-# the guild's Discord snowflake (== guilds.id).
+# Every table scoped to a Discord guild. Uses acts_as_tenant so queries are
+# auto-scoped to the current guild and guild_id is auto-filled on create — the
+# current guild is set at the two entry points (web before_action, bot dispatch).
 module GuildScoped
   extend ActiveSupport::Concern
 
   included do
-    belongs_to :guild
-    validates :guild_id, presence: true
-    scope :for_guild, ->(guild_id) { where(guild_id: guild_id) }
+    acts_as_tenant(:guild)
   end
 end

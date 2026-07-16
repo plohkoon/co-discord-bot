@@ -4,14 +4,14 @@ class Team < ApplicationRecord
   has_many :application_questions, -> { order(:position) }, dependent: :destroy
   has_many :team_applications, dependent: :destroy
 
-  validates :name, presence: true, length: { maximum: 100 },
-                   uniqueness: { scope: :guild_id, case_sensitive: false }
+  validates :name, presence: true, length: { maximum: 100 }
+  validates_uniqueness_to_tenant :name, case_sensitive: false
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
 
   scope :active, -> { where(active: true) }
 
   # Sensible starter questions created with a new team; admins can edit them
-  # later via the web app.
+  # later via the web dashboard.
   DEFAULT_QUESTIONS = [
     { key: "handle",     label: "In-game name / handle",    style: :short,     required: true,  placeholder: "How should we refer to you?" },
     { key: "timezone",   label: "Timezone",                 style: :short,     required: true,  placeholder: "e.g. UTC-5 / EST" },
@@ -23,7 +23,7 @@ class Team < ApplicationRecord
     return if application_questions.exists?
 
     DEFAULT_QUESTIONS.each_with_index do |attrs, i|
-      application_questions.create!(guild_id: guild_id, position: i, **attrs)
+      application_questions.create!(position: i, **attrs)
     end
   end
 end

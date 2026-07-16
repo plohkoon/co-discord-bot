@@ -48,6 +48,8 @@ gem "discordrb", "~> 3.8"
 # Discord OAuth login for the web app
 gem "omniauth-discord", "~> 1.2"
 gem "omniauth-rails_csrf_protection"
+# Row-level multi-tenancy: auto-scope every query to the current guild
+gem "acts_as_tenant"
 # Continuous SQLite replication/backups [https://github.com/fractaledmind/litestream-ruby]
 gem "litestream"
 
