@@ -16,9 +16,10 @@ module Discord
 
     def call
       installed = Guild.pluck(:id).to_set
-      fetch
-        .select { |g| installed.include?(g["id"].to_i) && manager?(g) }
-        .map { |g| { "id" => g["id"].to_s, "name" => g["name"], "icon" => g["icon"] } }
+      guilds = fetch
+      matched = guilds.select { |g| installed.include?(g["id"].to_i) && manager?(g) }
+      Rails.logger.info("[web] manageable guilds: fetched=#{guilds.size} installed=#{installed.size} matched=#{matched.size}")
+      matched.map { |g| { "id" => g["id"].to_s, "name" => g["name"], "icon" => g["icon"] } }
     rescue => e
       Rails.logger.error("[web] fetching Discord guilds failed: #{e.class}: #{e.message}")
       []
@@ -33,7 +34,11 @@ module Discord
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 5) do |http|
         http.request(request)
       end
-      response.is_a?(Net::HTTPSuccess) ? JSON.parse(response.body) : []
+
+      return JSON.parse(response.body) if response.is_a?(Net::HTTPSuccess)
+
+      Rails.logger.warn("[web] /users/@me/guilds -> HTTP #{response.code}: #{response.body.to_s[0, 300]}")
+      []
     end
 
     def manager?(guild)
