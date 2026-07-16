@@ -98,15 +98,31 @@ module CoBot
       end
     end
 
+    # Register each command's full subtree in one pass. discordrb's `group`
+    # yields a builder to a block (it isn't chainable), and a group's subcommands
+    # must all be added inside one `group` call or they overwrite each other.
     def install_commands
-      CommandRegistry.dispatch_table.each do |path, klass|
-        handler = ->(event) { dispatch(klass, event) }
-        case path.size
-        when 1 then @bot.application_command(path[0], &handler)
-        when 2 then @bot.application_command(path[0]).subcommand(path[1], &handler)
-        when 3 then @bot.application_command(path[0]).group(path[1]).subcommand(path[2], &handler)
+      CommandRegistry.definition.commands.each do |command|
+        if command.leaf?
+          @bot.application_command(command.name, &handler_for(command))
+        else
+          root = @bot.application_command(command.name)
+          command.children.each do |child|
+            if child.leaf?
+              root.subcommand(child.name, &handler_for(child))
+            else
+              root.group(child.name) do |group|
+                child.children.each { |leaf| group.subcommand(leaf.name, &handler_for(leaf)) }
+              end
+            end
+          end
         end
       end
+    end
+
+    def handler_for(node)
+      klass = CommandRegistry.class_for(node)
+      ->(event) { dispatch(klass, event) }
     end
 
     def install_components
