@@ -1,18 +1,20 @@
-# The command manifest — the whole Discord command surface at a glance. Each
-# node points at a class in app/bot/commands that owns its options, autocomplete,
-# and handler. Like config/routes.rb, but for Discord interactions.
+# The command manifest — the whole Discord command surface at a glance. Nesting
+# `command` builds the tree; a command with children is a subcommand group, a
+# command without children is a leaf. Each node's class is discovered from its
+# path (e.g. `command :accept` under team/member -> Commands::Team::Member::Accept);
+# pass `class:` only to override a non-standard path.
 
 CoBot::CommandRegistry.draw do
   command :team, "Manage teams" do
-    subcommand :create, Commands::Team::Create
-    subcommand :list,   Commands::Team::List
-    subcommand :apply,  Commands::Team::Apply
+    command :create
+    command :list
+    command :apply
 
-    group :member, "Manage a team member" do
-      subcommand :accept, Commands::Team::Member::Accept
-      subcommand :reject, Commands::Team::Member::Reject
-      subcommand :note,   Commands::Team::Member::Note
-      subcommand :remove, Commands::Team::Member::Remove
+    command :member, "Manage a team member" do
+      command :accept
+      command :reject
+      command :note
+      command :remove
     end
   end
 
