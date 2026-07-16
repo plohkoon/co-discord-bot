@@ -2,6 +2,8 @@ require "test_helper"
 
 module Applications
   class SubmitTest < ActiveSupport::TestCase
+    include ActiveJob::TestHelper
+
     FakeUser = Struct.new(:id, :username)
 
     # Stands in for the modal-submit event Submit reads answers from.
@@ -24,6 +26,14 @@ module Applications
     end
 
     def submit = ActsAsTenant.with_tenant(guild) { Submit.call(team: team, event: FakeEvent.new(11)) }
+
+    test "submitting schedules the reminder and auto-reject timeline" do
+      assert_enqueued_jobs 4 do
+        submit
+      end
+      assert_enqueued_jobs 3, only: ApplicationReminderJob
+      assert_enqueued_jobs 1, only: ApplicationAutoRejectJob
+    end
 
     test "a second application while one is pending raises DuplicatePending" do
       application = submit

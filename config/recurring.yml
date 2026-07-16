@@ -1,15 +1,9 @@
 # Solid Queue recurring tasks, per environment. The scheduler runs wherever the
 # workers run (bin/jobs in dev, SOLID_QUEUE_IN_PUMA in production).
-
-development:
-  application_sweep:
-    class: ApplicationSweepJob
-    schedule: every 15 minutes
+# Application reminders/auto-rejects are NOT here — they're exact-timestamp
+# scheduled jobs enqueued by Applications::Timeline at submit time.
 
 production:
-  application_sweep:
-    class: ApplicationSweepJob
-    schedule: every 15 minutes
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12

@@ -20,10 +20,10 @@ module Applications
       end
       raise AlreadyMember if membership.active?
 
-      TeamApplication.transaction do
+      application = TeamApplication.transaction do
         membership.update!(status: :pending, discord_username: username)
 
-        application = membership.team_applications.create!(
+        record = membership.team_applications.create!(
           team: @team,
           discord_user_id: user_id,
           discord_username: username,
@@ -31,7 +31,7 @@ module Applications
         )
 
         @team.application_questions.ordered.each_with_index do |question, i|
-          application.application_answers.create!(
+          record.application_answers.create!(
             position: i,
             question_key: question.key,
             question_label: question.label,
@@ -39,8 +39,13 @@ module Applications
           )
         end
 
-        application
+        record
       end
+
+      # After the commit (the queue is a separate DB — never enqueue inside the
+      # write transaction): reminders at 24h/3d/6d + auto-reject at 7 days.
+      Timeline.schedule(application)
+      application
     rescue ActiveRecord::RecordNotUnique
       # The partial-unique index rejected a second pending application.
       raise DuplicatePending
