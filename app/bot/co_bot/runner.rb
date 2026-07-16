@@ -11,6 +11,39 @@ module CoBot
       def stop  = @instance&.stop
       def reset! = (@instance = nil)
 
+      # Blocking, supervised run for a dedicated bot process (bin/bot, or the
+      # Puma fork). Restarts the gateway with backoff if it crashes, and stops
+      # gracefully on SIGINT/SIGTERM.
+      def run_supervised
+        @shutdown = false
+        install_signal_traps
+        backoff = 1
+        until @shutdown
+          begin
+            start
+          rescue => e
+            Rails.logger.error("[co-bot] gateway loop crashed: #{e.class}: #{e.message}")
+            Rails.logger.error(Array(e.backtrace).first(8).join("\n"))
+          end
+          break if @shutdown
+
+          Rails.logger.warn("[co-bot] gateway stopped; restarting in #{backoff}s")
+          sleep backoff
+          backoff = [ backoff * 2, 30 ].min
+          reset!
+        end
+        Rails.logger.info("[co-bot] supervised loop exited")
+      end
+
+      def install_signal_traps
+        %w[INT TERM].each do |signal|
+          Signal.trap(signal) do
+            @shutdown = true
+            Thread.new { stop }
+          end
+        end
+      end
+
       # Wrap a discordrb handler body. discordrb dispatches every gateway event
       # on its own bare Thread, so DB work MUST run inside the Rails executor to
       # return pooled connections and resolve reloadable constants. Rescues so a

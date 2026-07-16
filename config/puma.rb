@@ -37,6 +37,14 @@ plugin :tmp_restart
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
 plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 
+# Run the co-bot Discord gateway alongside the web server, mirroring the Solid
+# Queue plugin: it forks a supervised child process. So `bin/rails server` boots
+# web + jobs + bot together (one deploy unit) with crash isolation.
+# lib/ isn't on the load path yet (puma.rb is evaluated before Rails boots), so
+# add it for the plugin's bare `require`.
+$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
+plugin :discord_bot if ENV["RUN_DISCORD_BOT"]
+
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]
