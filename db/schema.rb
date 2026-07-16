@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_215443) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_230323) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -121,6 +121,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_215443) do
     t.datetime "created_at", null: false
     t.bigint "discord_id", null: false
     t.string "global_name"
+    t.text "installable_guilds"
     t.datetime "updated_at", null: false
     t.string "username", default: "", null: false
     t.index ["discord_id"], name: "index_users_on_discord_id", unique: true

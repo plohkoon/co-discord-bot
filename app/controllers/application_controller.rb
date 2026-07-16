@@ -23,10 +23,33 @@ class ApplicationController < ActionController::Base
     redirect_to login_path, alert: "Please sign in with Discord to continue."
   end
 
-  # Guild ids the user can manage (co-bot installed + Manage Server), captured
-  # at login. Names/details come from the Guild table.
+  # Guild ids the user can manage: captured at login, plus servers from the
+  # installable list whose Guild row has since appeared (the "Add co-bot" flow —
+  # Manage Server was verified at login, the same trust as session[:guild_ids],
+  # so no re-login is needed after an install).
   def manageable_guild_ids
-    Array(session[:guild_ids]).map(&:to_s)
+    Array(session[:guild_ids]).map(&:to_s) | promoted_guild_ids
+  end
+
+  def stored_installable_guilds
+    Array(current_user&.installable_guilds)
+  end
+
+  def stored_installable_ids
+    stored_installable_guilds.map { |g| g["id"].to_s }
+  end
+
+  def promoted_guild_ids
+    return [] if stored_installable_ids.empty?
+
+    Guild.where(id: stored_installable_ids).pluck(:id).map(&:to_s)
+  end
+
+  # Installable servers still without a Guild row — the dashboard's "Add co-bot"
+  # cards. Names come from the user row (there's no Guild row to read them from).
+  def installable_guilds
+    promoted = promoted_guild_ids.to_set
+    stored_installable_guilds.reject { |g| promoted.include?(g["id"].to_s) }
   end
 
   def manageable_guilds

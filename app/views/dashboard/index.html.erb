@@ -4,10 +4,11 @@
       title: "Your servers",
       subtitle: "Servers where co-bot is installed and you have Manage Server.") %>
 
-<% if @guilds.empty? && @removed_guilds.empty? %>
+<% if @guilds.empty? && @removed_guilds.empty? && @installable.empty? %>
   <%= render Ui::EmptyStateComponent.new do %>
-    No manageable servers yet. Make sure co-bot is in your server and you have the
-    <span class="text-foreground">Manage Server</span> permission.
+    No manageable servers yet. You need the
+    <span class="text-foreground">Manage Server</span> permission on a Discord server
+    to set up co-bot there.
   <% end %>
 <% elsif @guilds.any? %>
   <div class="grid gap-3 sm:grid-cols-2">
@@ -21,6 +22,30 @@
         </div>
       <% end %>
     <% end %>
+  </div>
+<% end %>
+
+<% if @installable.any? %>
+  <div class="mt-8"
+       data-controller="install-poll"
+       data-install-poll-url-value="<%= install_status_path(ids: @installable.map { |g| g["id"] }) %>">
+    <div class="text-sm font-medium text-foreground">Add co-bot to a server</div>
+    <p class="text-xs text-muted-foreground mt-1">
+      Servers where you have Manage Server. This page updates automatically once the bot joins.
+    </p>
+    <div class="grid gap-3 sm:grid-cols-2 mt-3">
+      <% @installable.each do |guild| %>
+        <div class="flex items-center gap-3 rounded-xl border border-border border-dashed bg-card/50 p-4">
+          <%= render Ui::AvatarComponent.new(name: guild["name"], size: :md) %>
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-foreground truncate"><%= guild["name"] %></div>
+          </div>
+          <%= link_to "Add co-bot", discord_install_url(guild_id: guild["id"]),
+                target: "_blank", rel: "noopener",
+                class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+        </div>
+      <% end %>
+    </div>
   </div>
 <% end %>
 

@@ -10,11 +10,15 @@ class SessionsController < ApplicationController
     auth = request.env["omniauth.auth"]
     user = User.from_omniauth(auth)
 
+    guilds = Discord::ManageableGuilds.call(token: auth.credentials.token)
+
     reset_session
     session[:user_id] = user.id
     # Store only ids (names come from the Guild table) to keep the session cookie
     # well under CookieStore's 4KB limit — the full array can overflow it.
-    session[:guild_ids] = Discord::ManageableGuilds.call(token: auth.credentials.token).map { |g| g["id"] }
+    session[:guild_ids] = guilds.manageable.map { |g| g["id"] }
+    # Installable servers (no Guild row) keep their names on the user row instead.
+    user.update!(installable_guilds: guilds.installable)
 
     redirect_to root_path, notice: "Signed in as #{user.display_name}."
   rescue => e

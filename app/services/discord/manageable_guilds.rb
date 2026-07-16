@@ -1,12 +1,15 @@
 require "net/http"
 
 module Discord
-  # Fetch the signed-in user's guilds via the OAuth token, and keep only the ones
-  # where (a) co-bot is (or was) installed and (b) the user has Manage Server.
-  # Returns a compact array of hashes suitable for stashing in the session.
+  # Fetch the signed-in user's guilds via the OAuth token and partition the ones
+  # they hold Manage Server on: `manageable` (co-bot is or was installed — we
+  # have a Guild row) and `installable` (no row yet — the dashboard offers an
+  # "Add co-bot" card). Entries are compact {"id","name","icon"} hashes.
   class ManageableGuilds
     MANAGE_GUILD = 1 << 5
     ENDPOINT = "https://discord.com/api/v10/users/@me/guilds"
+
+    Result = Struct.new(:manageable, :installable)
 
     def self.call(token:) = new(token:).call
 
@@ -15,19 +18,21 @@ module Discord
     end
 
     def call
-      # Match every guild we have a row for — including removed_at-stamped ones,
-      # so the dashboard can offer to re-invite the bot there.
       known = Guild.pluck(:id).to_set
-      guilds = fetch
-      matched = guilds.select { |g| known.include?(g["id"].to_i) && manager?(g) }
-      Rails.logger.info("[web] manageable guilds: fetched=#{guilds.size} known=#{known.size} matched=#{matched.size}")
-      matched.map { |g| { "id" => g["id"].to_s, "name" => g["name"], "icon" => g["icon"] } }
+      managed = fetch.select { |g| manager?(g) }
+      matched, installable = managed.partition { |g| known.include?(g["id"].to_i) }
+      Rails.logger.info("[web] manageable guilds: managed=#{managed.size} known=#{known.size} matched=#{matched.size} installable=#{installable.size}")
+      Result.new(compact(matched), compact(installable))
     rescue => e
       Rails.logger.error("[web] fetching Discord guilds failed: #{e.class}: #{e.message}")
-      []
+      Result.new([], [])
     end
 
     private
+
+    def compact(guilds)
+      guilds.map { |g| { "id" => g["id"].to_s, "name" => g["name"], "icon" => g["icon"] } }
+    end
 
     def fetch
       uri = URI(ENDPOINT)

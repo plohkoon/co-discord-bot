@@ -1,6 +1,12 @@
 class User < ApplicationRecord
   validates :discord_id, presence: true, uniqueness: true
 
+  # Servers where the user has Manage Server but co-bot isn't installed,
+  # captured at login ({"id","name","icon"} hashes). Kept on the row instead of
+  # the session so the dashboard can offer "Add co-bot" without overflowing the
+  # 4KB cookie. Refreshed on every sign-in.
+  serialize :installable_guilds, coder: JSON, type: Array
+
   def self.from_omniauth(auth)
     user = find_or_initialize_by(discord_id: auth.uid)
     raw = auth.extra&.raw_info || {}
