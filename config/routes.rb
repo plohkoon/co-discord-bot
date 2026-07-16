@@ -5,7 +5,7 @@ Rails.application.routes.draw do
   root "dashboard#index"
 
   # --- Auth ---
-  get  "/login",  to: "sessions#new",     as: :login
+  get    "/login",  to: "sessions#new",     as: :login
   delete "/logout", to: "sessions#destroy", as: :logout
   # Discord OAuth (the login button POSTs to /auth/discord, handled by OmniAuth).
   get   "/auth/discord/callback", to: "sessions#create"
@@ -15,10 +15,9 @@ Rails.application.routes.draw do
   resources :guilds, only: :show do
     resources :teams, only: :show do
       resources :questions, only: %i[create update destroy], controller: "team_questions"
-    end
-    resources :applications, only: %i[index show], controller: "team_applications"
-    resources :memberships, only: [] do
-      resources :notes, only: %i[create destroy], controller: "membership_notes"
+      resources :memberships, only: :show do
+        resources :notes, only: %i[create destroy], controller: "membership_notes"
+      end
     end
   end
 end

@@ -1,44 +1,62 @@
 <% content_for :title, "#{@team.name} · co-bot" %>
 
 <%= link_to "← #{@guild.name}", guild_path(@guild), class: "text-sm text-slate-500 hover:text-slate-300" %>
-<h1 class="text-xl font-semibold text-slate-100 mt-1 mb-6"><%= @team.name %></h1>
+<h1 class="text-2xl font-semibold text-slate-100 mt-1 mb-6"><%= @team.name %></h1>
 
-<div class="grid lg:grid-cols-2 gap-8">
-  <section>
-    <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
-      Application questions <span class="text-slate-600">(<%= @questions.size %>/<%= ApplicationQuestion::MAX_PER_TEAM %>)</span>
-    </h2>
+<div class="grid grid-cols-3 gap-3 mb-10">
+  <% [["active", "Active"], ["pending", "Pending"], ["archived", "Archived"]].each do |key, label| %>
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
+      <div class="text-2xl font-semibold text-slate-100"><%= @counts[key] %></div>
+      <div class="text-xs text-slate-500 uppercase tracking-wide mt-0.5"><%= label %></div>
+    </div>
+  <% end %>
+</div>
 
-    <div class="space-y-3">
-      <% @questions.each do |question| %>
-        <%= render "team_questions/form", guild: @guild, team: @team, question: question %>
+<section class="mb-12">
+  <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Members</h2>
+  <% ordered = @members_by_status.values_at("pending", "active", "archived").compact.flatten %>
+  <% if ordered.empty? %>
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-8 text-center text-slate-500 text-sm">
+      No members yet. They'll appear here when people apply or receive the team role.
+    </div>
+  <% else %>
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 divide-y divide-slate-800 overflow-hidden">
+      <% ordered.each do |member| %>
+        <%= link_to guild_team_membership_path(@guild, @team, member), class: "flex items-center gap-3 px-4 py-3 hover:bg-slate-900/80 transition" do %>
+          <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300 font-semibold shrink-0">
+            <%= (member.discord_username.presence || "?").first(1).upcase %>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-slate-200 truncate"><%= member.discord_username.presence || member.discord_user_id %></div>
+            <div class="text-xs text-slate-500">
+              <%= pluralize(@app_counts[member.id].to_i, "application") %> · updated <%= time_ago_in_words(member.updated_at) %> ago
+            </div>
+          </div>
+          <%= render "shared/status_badge", status: member.status %>
+        <% end %>
       <% end %>
     </div>
+  <% end %>
+</section>
 
-    <% if @questions.size < ApplicationQuestion::MAX_PER_TEAM %>
-      <div class="mt-4">
-        <h3 class="text-xs text-slate-500 mb-2">Add a question</h3>
-        <%= render "team_questions/form", guild: @guild, team: @team, question: @new_question %>
-      </div>
-    <% else %>
-      <p class="mt-3 text-xs text-slate-500">Discord modals allow at most <%= ApplicationQuestion::MAX_PER_TEAM %> questions.</p>
-    <% end %>
-  </section>
+<section>
+  <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide">
+    Application questions <span class="text-slate-600">(<%= @questions.size %>/<%= ApplicationQuestion::MAX_PER_TEAM %>)</span>
+  </h2>
+  <p class="text-xs text-slate-500 mt-0.5 mb-4">Shown to applicants in the <code class="text-slate-400 bg-slate-800 px-1 py-0.5 rounded">/apply</code> modal.</p>
 
-  <section>
-    <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Recent applications</h2>
-    <% if @applications.empty? %>
-      <p class="text-slate-500 text-sm">No applications yet.</p>
-    <% else %>
-      <div class="space-y-2">
-        <% @applications.each do |application| %>
-          <%= link_to guild_application_path(@guild, application),
-                class: "flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 hover:bg-slate-900 px-4 py-2.5 transition" do %>
-            <span class="text-sm text-slate-200"><%= application.discord_username.presence || application.discord_user_id %></span>
-            <%= render "team_applications/status_badge", status: application.status %>
-          <% end %>
-        <% end %>
-      </div>
+  <div class="space-y-3">
+    <% @questions.each do |question| %>
+      <%= render "team_questions/form", guild: @guild, team: @team, question: question %>
     <% end %>
-  </section>
-</div>
+  </div>
+
+  <% if @questions.size < ApplicationQuestion::MAX_PER_TEAM %>
+    <div class="mt-5">
+      <h3 class="text-xs text-slate-500 mb-2">Add a question</h3>
+      <%= render "team_questions/form", guild: @guild, team: @team, question: @new_question %>
+    </div>
+  <% else %>
+    <p class="mt-3 text-xs text-slate-500">Discord modals allow at most <%= ApplicationQuestion::MAX_PER_TEAM %> questions.</p>
+  <% end %>
+</section>

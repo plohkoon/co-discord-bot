@@ -1,0 +1,81 @@
+<% content_for :title, "#{@membership.discord_username.presence || @membership.discord_user_id} · #{@team.name}" %>
+
+<%= link_to "← #{@team.name}", guild_team_path(@guild, @team), class: "text-sm text-slate-500 hover:text-slate-300" %>
+
+<div class="flex items-center gap-3 mt-2 mb-1">
+  <div class="w-11 h-11 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-semibold shrink-0">
+    <%= (@membership.discord_username.presence || "?").first(1).upcase %>
+  </div>
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold text-slate-100 truncate">
+      <%= @membership.discord_username.presence || @membership.discord_user_id %>
+    </h1>
+    <div class="text-xs text-slate-500"><%= @team.name %></div>
+  </div>
+  <div class="ml-auto shrink-0"><%= render "shared/status_badge", status: @membership.status %></div>
+</div>
+<p class="text-xs text-slate-500 mb-8">
+  <% if @membership.joined_at %>Joined <%= @membership.joined_at.strftime("%b %-d, %Y") %><% end %>
+  <% if @membership.left_at %> · left <%= @membership.left_at.strftime("%b %-d, %Y") %><% end %>
+</p>
+
+<div class="grid lg:grid-cols-3 gap-8">
+  <div class="lg:col-span-2">
+    <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Application history</h2>
+    <% if @applications.empty? %>
+      <p class="text-slate-500 text-sm">No applications on record.</p>
+    <% else %>
+      <div class="space-y-4">
+        <% @applications.each do |application| %>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs text-slate-500">
+                <%= application.created_at.strftime("%b %-d, %Y at %H:%M") %><% if application.manual? %> · manual role grant<% end %>
+              </div>
+              <%= render "shared/status_badge", status: application.status %>
+            </div>
+            <% if application.application_answers.any? %>
+              <div class="space-y-3">
+                <% application.application_answers.each do |answer| %>
+                  <div>
+                    <div class="text-xs text-slate-500 mb-0.5"><%= answer.question_label %></div>
+                    <div class="text-sm text-slate-200 whitespace-pre-wrap"><%= answer.answer.presence || "—" %></div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-xs text-slate-500">No answers — the role was granted manually.</p>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <aside>
+    <h2 class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Notes <span class="text-slate-600">· officers only</span></h2>
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+      <div class="space-y-3 mb-3">
+        <% @notes.each do |note| %>
+          <div class="text-sm">
+            <div class="text-slate-200 whitespace-pre-wrap"><%= note.body %></div>
+            <div class="text-xs text-slate-500 mt-0.5 flex items-center justify-between gap-2">
+              <span class="truncate"><%= note.author_username.presence || note.author_discord_id %> · <%= note.created_at.strftime("%b %-d") %></span>
+              <%= button_to "×", guild_team_membership_note_path(@guild, @team, @membership, note), method: :delete,
+                    class: "text-slate-600 hover:text-red-400 leading-none shrink-0",
+                    form: { data: { turbo_confirm: "Delete note?" } } %>
+            </div>
+          </div>
+        <% end %>
+        <% if @notes.empty? %><p class="text-xs text-slate-500">No notes yet.</p><% end %>
+      </div>
+      <%= form_with url: guild_team_membership_notes_path(@guild, @team, @membership), scope: :membership_note do |f| %>
+        <%= f.text_area :body, rows: 2, placeholder: "Add a note…",
+              class: "w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#5865F2]" %>
+        <div class="text-right mt-1">
+          <%= f.submit "Add note", class: "text-xs rounded-md bg-[#5865F2] hover:bg-[#4752c4] px-3 py-1.5 font-medium text-white cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </aside>
+</div>

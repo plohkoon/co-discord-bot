@@ -10,24 +10,25 @@ class MembershipNotesController < ApplicationController
     )
 
     if note.body.present? && note.save
-      redirect_back_to_review notice: "Note added."
+      redirect_to membership_path, notice: "Note added."
     else
-      redirect_back_to_review alert: "Note can't be blank."
+      redirect_to membership_path, alert: "Note can't be blank."
     end
   end
 
   def destroy
     @membership.membership_notes.find(params[:id]).destroy
-    redirect_back_to_review notice: "Note removed."
+    redirect_to membership_path, notice: "Note removed."
   end
 
   private
 
   def set_membership
-    @membership = TeamMembership.find(params[:membership_id])
+    @team = @guild.teams.find(params[:team_id])
+    @membership = @team.team_memberships.find(params[:membership_id])
   end
 
-  def redirect_back_to_review(**flash_opts)
-    redirect_back fallback_location: guild_team_path(@guild, @membership.team), **flash_opts
+  def membership_path
+    guild_team_membership_path(@guild, @team, @membership)
   end
 end
