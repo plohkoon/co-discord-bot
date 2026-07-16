@@ -50,6 +50,10 @@ class ApplyCommand < ApplicationCommand
     application = current_guild.team_applications.find_by(id: params[:application_id])
     return respond("That application no longer exists.") unless application
 
+    unless officer_for?(application.team)
+      return respond("Only **#{application.team.name}** officers can review this application.")
+    end
+
     result = Applications::Decide.call(
       application: application,
       decision: params[:decision],
@@ -68,6 +72,16 @@ class ApplyCommand < ApplicationCommand
   end
 
   private
+
+  # Only a team's officers (or server admins) may accept/reject its applications.
+  # Defence-in-depth on top of restricting the review channel's visibility.
+  def officer_for?(team)
+    member = current_user
+    return false unless member.respond_to?(:roles)
+
+    member.permission?(:administrator) || member.permission?(:manage_server) ||
+      member.roles.any? { |role| role.id == team.officer_role_id }
+  end
 
   def resolve_team(raw)
     raw = raw.to_s
