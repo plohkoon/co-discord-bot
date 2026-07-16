@@ -1,7 +1,8 @@
 module ApplicationHelper
   # Permissions requested when inviting the bot: Manage Roles (it grants/revokes
-  # team roles). Changing this after launch means servers must re-invite.
-  BOT_INVITE_PERMISSIONS = 1 << 28
+  # team roles), View Channels + Add Reactions (message actions react to
+  # messages). Changing this after launch means servers must re-invite.
+  BOT_INVITE_PERMISSIONS = (1 << 28) | (1 << 10) | (1 << 6)
 
   # Discord's "Add to Server" URL. With a guild_id the server is pre-selected
   # and locked, so the Discord side is a single click.

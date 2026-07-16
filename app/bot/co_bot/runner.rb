@@ -5,6 +5,11 @@ module CoBot
   # classes discovered by CoBot::CommandRegistry. Host-agnostic: bin/bot and the
   # Puma plugin both just call CoBot::Runner.start / .stop.
   class Runner
+    # Discord's MESSAGE_CONTENT privileged intent. discordrb 3.8's INTENTS table
+    # predates it, so it's passed as a raw bit; without it (and the matching
+    # portal toggle) message.content arrives empty and no message action fires.
+    MESSAGE_CONTENT_INTENT = 1 << 15
+
     class << self
       def instance = @instance ||= new
       def start = instance.start
@@ -66,7 +71,7 @@ module CoBot
       token = ENV["DISCORD_BOT_TOKEN"].to_s
       raise "DISCORD_BOT_TOKEN is not set" if token.strip.empty?
 
-      @bot = Discordrb::Bot.new(token: token, intents: %i[servers server_members])
+      @bot = Discordrb::Bot.new(token: token, intents: [ :servers, :server_members, :server_messages, MESSAGE_CONTENT_INTENT ])
       install
     end
 
@@ -93,6 +98,10 @@ module CoBot
       # longer cached by the time the event fires. discordrb suppresses the
       # outage-flagged GUILD_DELETE, so this only fires on a genuine removal.
       @bot.server_delete { |event| self.class.handle("server_delete") { mark_guild_removed(event.server) } }
+
+      @bot.message do |event|
+        self.class.handle("message") { dispatch_message(event) }
+      end
 
       @bot.member_update do |event|
         self.class.handle("member_update") { Memberships::RoleSync.reconcile(server: event.server, member: event.user, roles: event.roles) }
@@ -160,6 +169,25 @@ module CoBot
         next unless klass
 
         with_tenant(event) { |guild| klass.new(event: event, guild: guild).autocomplete(event.focused) }
+      end
+    end
+
+    # Automatic message actions (config/message_actions.rb). This runs on every
+    # guild message, so match against the content before touching the DB.
+    def dispatch_message(event)
+      return if event.author&.bot_account? # never trigger on bots (incl. ourselves) — reaction/reply loops
+      return unless event.server
+
+      actions = MessageActionRegistry.matching(event.message.content)
+      return if actions.empty?
+
+      guild = Guild.sync_from_discord(id: event.server.id, name: event.server.name)
+      ActsAsTenant.with_tenant(guild) do
+        actions.each do |klass|
+          klass.new(event: event, guild: guild).perform
+        rescue => e
+          Rails.logger.error("[co-bot] #{klass.name} failed: #{e.class}: #{e.message}")
+        end
       end
     end
 

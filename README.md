@@ -26,7 +26,7 @@ The web app runs at http://localhost:3000.
 
 Copy `.env.example` to `.env` and fill in:
 
-- `DISCORD_BOT_TOKEN` — bot token from the Developer Portal. **Also enable the Server Members Intent** on the Bot page; co-bot uses it to auto-sync memberships when roles change.
+- `DISCORD_BOT_TOKEN` — bot token from the Developer Portal. **Also enable the Server Members Intent** (auto-syncs memberships when roles change) **and the Message Content Intent** (message actions read message text) on the Bot page.
 - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` — for web login. Add `http://localhost:3000/auth/discord/callback` as an OAuth2 redirect.
 
 Use a **separate Discord application per environment** (e.g. "co-bot dev" locally): a shared bot token delivers every gateway event to all connected processes, which then fight over interactions and command sync. Commands register per guild the moment the bot joins, so no test-guild ID is needed.
