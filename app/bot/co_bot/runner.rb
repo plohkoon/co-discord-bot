@@ -17,6 +17,13 @@ module CoBot
       def run_supervised
         @shutdown = false
         install_signal_traps
+
+        if ENV["DISCORD_BOT_TOKEN"].to_s.strip.empty?
+          Rails.logger.warn("[co-bot] DISCORD_BOT_TOKEN is not set — gateway will stay idle. Add it and restart.")
+          sleep 1 until @shutdown
+          return
+        end
+
         backoff = 1
         until @shutdown
           begin

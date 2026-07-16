@@ -5,12 +5,9 @@
 # environment so the bot shares models + database with the web app. Used by
 # Procfile.dev in development and as a standalone service in production (or via
 # the discord_bot Puma plugin, which forks an equivalent child).
+#
+# run_supervised handles a missing DISCORD_BOT_TOKEN by idling gracefully, so
+# `bin/dev` never crash-loops before credentials are configured.
 require_relative "../config/environment"
 
-if ENV["DISCORD_BOT_TOKEN"].to_s.strip.empty?
-  warn "[co-bot] DISCORD_BOT_TOKEN is not set — the gateway will not start. " \
-       "Add it to .env and restart. (Idling so the dev process manager doesn't crash-loop.)"
-  sleep
-else
-  CoBot::Runner.run_supervised
-end
+CoBot::Runner.run_supervised

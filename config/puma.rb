@@ -43,7 +43,8 @@ plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 # lib/ isn't on the load path yet (puma.rb is evaluated before Rails boots), so
 # add it for the plugin's bare `require`.
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
-plugin :discord_bot if ENV["RUN_DISCORD_BOT"]
+# Note: a bare `if ENV["X"]` is truthy even for "" — gate on an actual value.
+plugin :discord_bot if %w[1 true yes on].include?(ENV["RUN_DISCORD_BOT"].to_s.strip.downcase)
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
