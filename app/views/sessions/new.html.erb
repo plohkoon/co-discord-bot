@@ -5,7 +5,10 @@
   <p class="mt-2 text-slate-400">Manage your Discord teams and review applications.</p>
 
   <div class="mt-8">
+    <%# data-turbo=false: let the browser do a full-page POST so it can follow
+        OmniAuth's 302 to discord.com. Turbo would fetch() it and hit CORS. %>
     <%= button_to "/auth/discord", method: :post,
+          form: { data: { turbo: false } },
           class: "inline-flex items-center gap-2 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] px-5 py-2.5 font-medium text-white transition" do %>
       Sign in with Discord
     <% end %>
