@@ -1,9 +1,11 @@
 module Applications
-  # Records a team application + its answers. Runs inside the current-guild
-  # tenant, so guild_id is auto-filled. Snapshots each question's key + label
-  # onto the answer so it stays readable if questions change later.
+  # Records a team application + its answers, routed through the applicant's
+  # membership (created/reopened as needed). Runs inside the current-guild
+  # tenant, so guild_id auto-fills. Snapshots each question's key + label onto
+  # the answer so it stays readable if questions change later.
   class Submit
     class DuplicatePending < StandardError; end
+    class AlreadyMember < StandardError; end
 
     def self.call(...) = new(...).call
 
@@ -13,10 +15,19 @@ module Applications
     end
 
     def call
+      membership = TeamMembership.find_or_create_by!(team_id: @team.id, discord_user_id: user_id) do |m|
+        m.discord_username = username
+      end
+      raise AlreadyMember if membership.active?
+
       TeamApplication.transaction do
-        application = @team.team_applications.create!(
-          discord_user_id: @event.user.id,
-          discord_username: username
+        membership.update!(status: :pending, discord_username: username)
+
+        application = membership.team_applications.create!(
+          team: @team,
+          discord_user_id: user_id,
+          discord_username: username,
+          source: :applied
         )
 
         @team.application_questions.ordered.each_with_index do |question, i|
@@ -36,6 +47,8 @@ module Applications
     end
 
     private
+
+    def user_id = @event.user.id
 
     def username
       user = @event.user

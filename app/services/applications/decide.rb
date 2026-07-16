@@ -1,6 +1,6 @@
 module Applications
-  # Accept or reject an application. Shared by the bot (Accept/Reject buttons)
-  # and — later — the web dashboard.
+  # Accept or reject an application, transitioning the membership. Shared by the
+  # bot (Accept/Reject buttons) and the web dashboard.
   #
   # Correctness properties:
   #   * Idempotent under double-clicks: the status transition is claimed inside a
@@ -26,13 +26,18 @@ module Applications
     def call
       return Result.new(status: :already_decided) unless claim!
 
-      if @decision == :accept && @role_granter
-        begin
-          @role_granter.call(@application)
-        rescue RoleError => e
-          revert!
-          return Result.new(status: :error, error: e.message)
+      if @decision == :accept
+        if @role_granter
+          begin
+            @role_granter.call(@application)
+          rescue RoleError => e
+            revert!
+            return Result.new(status: :error, error: e.message)
+          end
         end
+        activate_membership
+      else
+        archive_membership
       end
 
       Result.new(status: :ok)
@@ -55,6 +60,16 @@ module Applications
 
     def revert!
       @application.update!(status: :pending, decided_by_discord_id: nil, decided_at: nil)
+    end
+
+    def activate_membership
+      membership = @application.team_membership
+      membership&.update!(status: :active, joined_at: membership.joined_at || Time.current, left_at: nil)
+    end
+
+    def archive_membership
+      membership = @application.team_membership
+      membership&.update!(status: :archived, left_at: Time.current) if membership&.pending?
     end
   end
 end
