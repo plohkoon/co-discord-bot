@@ -10,6 +10,7 @@ class Team < ApplicationRecord
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
 
   scope :active, -> { where(active: true) }
+  scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }
 
   # Sensible starter questions created with a new team; admins can edit them
   # later via the web dashboard.

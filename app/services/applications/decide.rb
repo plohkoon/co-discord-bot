@@ -10,8 +10,6 @@ module Applications
   #   * Compensating revert: if role assignment fails, the claim is rolled back
   #     to pending so an officer can retry.
   class Decide
-    class RoleError < StandardError; end
-
     Result = Struct.new(:status, :error, keyword_init: true)
 
     def self.call(...) = new(...).call
@@ -30,7 +28,7 @@ module Applications
         if @role_granter
           begin
             @role_granter.call(@application)
-          rescue RoleError => e
+          rescue Memberships::RoleError => e
             revert!
             return Result.new(status: :error, error: e.message)
           end

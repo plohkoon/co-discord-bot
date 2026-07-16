@@ -46,8 +46,8 @@ module CoBot
     def decision_view(application)
       view = Discordrb::Webhooks::View.new
       view.row do |row|
-        row.button(label: "Accept", style: :success, custom_id: CoBot::Router.custom_id("decide", "accept", application.id))
-        row.button(label: "Reject", style: :danger,  custom_id: CoBot::Router.custom_id("decide", "reject", application.id))
+        row.button(label: "Accept", style: :success, custom_id: CoBot::CommandRegistry.custom_id("decide", "accept", application.id))
+        row.button(label: "Reject", style: :danger,  custom_id: CoBot::CommandRegistry.custom_id("decide", "reject", application.id))
       end
       add_notes_row(view, application)
       view
@@ -65,8 +65,8 @@ module CoBot
       return unless membership_id
 
       view.row do |row|
-        row.button(label: "📝 Add note",   style: :secondary, custom_id: CoBot::Router.custom_id("note", membership_id))
-        row.button(label: "📋 View notes", style: :secondary, custom_id: CoBot::Router.custom_id("notes", membership_id))
+        row.button(label: "📝 Add note",   style: :secondary, custom_id: CoBot::CommandRegistry.custom_id("note", membership_id))
+        row.button(label: "📋 View notes", style: :secondary, custom_id: CoBot::CommandRegistry.custom_id("notes", membership_id))
       end
     end
 
