@@ -28,10 +28,14 @@ class MessageActionsTest < ActiveSupport::TestCase
     assert_equal [ "🥩" ], event.message.reactions
   end
 
-  test "manifest resolves action classes and matching filters by content" do
-    assert_includes CoBot::MessageActionRegistry.actions, MessageActions::MeatReact
+  test "drawn actions resolve from their names and matching filters by content" do
+    CoBot::MessageActionRegistry.draw { action :meat_react }
+
+    assert_equal [ MessageActions::MeatReact ], CoBot::MessageActionRegistry.actions
     assert_includes CoBot::MessageActionRegistry.matching("give me meat"), MessageActions::MeatReact
     assert_empty CoBot::MessageActionRegistry.matching("give me vegetables")
+  ensure
+    CoBot::MessageActionRegistry.reload! # back to config/message_actions.rb
   end
 
   test "match requires exactly one matcher kind" do

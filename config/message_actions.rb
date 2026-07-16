@@ -9,5 +9,5 @@
 # message.content arrives empty and no action will ever match.
 
 CoBot::MessageActionRegistry.draw do
-  action :meat_react
+  # action :meat_react
 end
