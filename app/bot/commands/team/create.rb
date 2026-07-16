@@ -20,9 +20,23 @@ module Commands
           team.seed_default_questions!
           respond("✅ Created team **#{team.name}**. Members can now `/team apply`. " \
                   "I added starter application questions — edit them in the dashboard.")
+          backfill_existing_members(team)
         else
           respond("⚠️ Couldn't create the team: #{team.errors.full_messages.to_sentence}")
         end
+      end
+
+      private
+
+      # Anyone already holding the team role becomes an active member. Runs
+      # after the ack — chunking members can take seconds on large servers.
+      def backfill_existing_members(team)
+        count = Memberships::Backfill.call(team: team, server: server)
+        return unless count.positive?
+
+        follow_up("👥 Picked up **#{count}** existing #{"holder".pluralize(count)} of the team role as active #{"member".pluralize(count)}.")
+      rescue => e
+        Rails.logger.error("[co-bot] member backfill for team #{team.id} failed: #{e.class}: #{e.message}")
       end
     end
   end

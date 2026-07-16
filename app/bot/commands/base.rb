@@ -126,6 +126,13 @@ module Commands
       event.update_message(content: content, embeds: Array(embeds).compact.presence, components: components)
     end
 
+    # Follow-up message AFTER the single ack (Discord allows them for 15
+    # minutes) — for reporting on slow work done post-response, e.g. member
+    # backfill that has to chunk the server's member list.
+    def follow_up(content, ephemeral: true)
+      event.interaction.send_message(content: content, ephemeral: ephemeral)
+    end
+
     def ack!
       raise "this interaction has already been answered" if @performed
 
