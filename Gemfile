@@ -50,6 +50,8 @@ gem "omniauth-discord", "~> 1.2"
 gem "omniauth-rails_csrf_protection"
 # Row-level multi-tenancy: auto-scope every query to the current guild
 gem "acts_as_tenant"
+# Reusable, testable view components (the UI design system)
+gem "view_component"
 # Continuous SQLite replication/backups [https://github.com/fractaledmind/litestream-ruby]
 gem "litestream"
 

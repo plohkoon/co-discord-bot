@@ -14,18 +14,20 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="h-full bg-slate-950 text-slate-200 antialiased">
-    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur">
+  <body class="min-h-full">
+    <header class="sticky top-0 z-50 border-b border-border bg-card/70 backdrop-blur">
       <div class="mx-auto max-w-5xl px-5 h-14 flex items-center justify-between">
-        <%= link_to "co-bot", root_path, class: "font-semibold tracking-tight text-slate-100" %>
+        <%= link_to "co-bot", root_path, class: "font-semibold tracking-tight text-gold" %>
         <% if logged_in? %>
           <div class="flex items-center gap-3 text-sm">
             <% if current_user.avatar_url %>
               <%= image_tag current_user.avatar_url, alt: "", class: "w-7 h-7 rounded-full" %>
+            <% else %>
+              <%= render Ui::AvatarComponent.new(name: current_user.display_name) %>
             <% end %>
-            <span class="text-slate-300"><%= current_user.display_name %></span>
+            <span class="text-muted-foreground"><%= current_user.display_name %></span>
             <%= button_to "Sign out", logout_path, method: :delete,
-                  class: "text-slate-400 hover:text-slate-200 transition" %>
+                  class: "text-muted-foreground hover:text-foreground transition" %>
           </div>
         <% end %>
       </div>
@@ -34,7 +36,7 @@
     <% if flash.any? %>
       <div class="mx-auto max-w-5xl px-5 mt-4 space-y-2">
         <% flash.each do |type, message| %>
-          <div class="rounded-lg px-4 py-2 text-sm <%= type.to_s == "alert" ? "bg-red-500/10 text-red-300 border border-red-500/30" : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" %>">
+          <div class="rounded-lg px-4 py-2 text-sm border <%= type.to_s == "alert" ? "bg-light-red/10 text-light-red border-light-red/30" : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" %>">
             <%= message %>
           </div>
         <% end %>

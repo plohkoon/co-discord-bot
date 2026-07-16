@@ -1,15 +1,13 @@
 <% content_for :title, "Sign in · co-bot" %>
 
 <div class="max-w-md mx-auto text-center py-20">
-  <h1 class="text-2xl font-semibold text-slate-100">co-bot dashboard</h1>
-  <p class="mt-2 text-slate-400">Manage your Discord teams and review applications.</p>
+  <h1 class="text-3xl font-semibold text-gold tracking-tight">co-bot</h1>
+  <p class="mt-2 text-muted-foreground">Manage your Discord teams and review applications.</p>
 
   <div class="mt-8">
-    <%# data-turbo=false: let the browser do a full-page POST so it can follow
-        OmniAuth's 302 to discord.com. Turbo would fetch() it and hit CORS. %>
-    <%= button_to "/auth/discord", method: :post,
-          form: { data: { turbo: false } },
-          class: "inline-flex items-center gap-2 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] px-5 py-2.5 font-medium text-white transition" do %>
+    <%# data-turbo=false: full-page POST so the browser can follow OmniAuth's redirect to discord.com. %>
+    <%= button_to "/auth/discord", method: :post, form: { data: { turbo: false } },
+          class: Ui::ButtonComponent.classes(variant: :gold) do %>
       Sign in with Discord
     <% end %>
   </div>

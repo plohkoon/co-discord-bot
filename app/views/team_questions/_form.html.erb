@@ -1,31 +1,26 @@
-<%# question is either persisted (edit) or a new record (add). Full width, so
-    the controls lay out on two tidy rows. %>
-<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+<%# question is either persisted (edit) or a new record (add). %>
+<div class="rounded-lg border border-border bg-card p-3">
   <%= form_with model: question,
         url: (question.persisted? ? guild_team_question_path(guild, team, question) : guild_team_questions_path(guild, team)),
         method: (question.persisted? ? :patch : :post),
         scope: :application_question, class: "space-y-2" do |f| %>
     <div class="flex items-center gap-2">
-      <%= f.text_field :label, placeholder: "Question (max 45 chars)", maxlength: 45,
-            class: "flex-1 min-w-0 rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#5865F2]" %>
-      <%= f.select :style, [ [ "Short", "short" ], [ "Paragraph", "paragraph" ] ], {},
-            class: "rounded-md bg-slate-800 border border-slate-700 px-2 py-2 text-sm text-slate-200 shrink-0" %>
-      <label class="flex items-center gap-1.5 text-sm text-slate-400 shrink-0 px-1">
-        <%= f.check_box :required, class: "rounded bg-slate-800 border-slate-600 text-[#5865F2]" %> Required
+      <%= f.text_field :label, placeholder: "Question (max 45 chars)", maxlength: 45, class: "field flex-1 min-w-0" %>
+      <%= f.select :style, [ [ "Short", "short" ], [ "Paragraph", "paragraph" ] ], {}, class: "field w-auto shrink-0" %>
+      <label class="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 px-1">
+        <%= f.check_box :required, class: "field-checkbox" %> Required
       </label>
     </div>
     <div class="flex items-center gap-2">
-      <%= f.text_field :placeholder, placeholder: "Placeholder hint (optional)", maxlength: 100,
-            class: "flex-1 min-w-0 rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#5865F2]" %>
-      <%= f.submit (question.persisted? ? "Save" : "Add"),
-            class: "rounded-md bg-[#5865F2] hover:bg-[#4752c4] px-4 py-2 text-sm font-medium text-white cursor-pointer shrink-0" %>
+      <%= f.text_field :placeholder, placeholder: "Placeholder hint (optional)", maxlength: 100, class: "field flex-1 min-w-0" %>
+      <%= f.submit (question.persisted? ? "Save" : "Add"), class: "#{Ui::ButtonComponent.classes(variant: :gold)} shrink-0" %>
     </div>
   <% end %>
 
   <% if question.persisted? %>
     <div class="mt-1.5 text-right">
       <%= button_to "Delete question", guild_team_question_path(guild, team, question), method: :delete,
-            class: "text-xs text-red-400/70 hover:text-red-300",
+            class: Ui::ButtonComponent.classes(variant: :danger, size: :sm),
             form: { data: { turbo_confirm: "Delete this question?" } } %>
     </div>
   <% end %>

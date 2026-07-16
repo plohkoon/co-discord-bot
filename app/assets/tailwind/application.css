@@ -1,1 +1,86 @@
 @import "tailwindcss";
+
+/* Scan components (.rb) + views so their class strings are generated. */
+@source "../../components";
+@source "../../views";
+
+/* --- co-bot theme: warm charcoal + gold, ported from wow-rando-comp --- */
+
+/* Flavour accents (WoW class/quality vibe) */
+@theme {
+  --color-gold: #ffd166;
+  --color-light-blue: #669bbc;
+  --color-light-red: #db5461;
+  --color-light-brown: #a5783a;
+  --color-dark-brown: #4b311f;
+}
+
+/* shadcn-style semantic tokens, wired to the CSS variables below */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Dark, warm charcoal (from wow-rando-comp .dark) */
+  --background: #222222;
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Form fields — form builders don't compose with components, so use a class. */
+@layer components {
+  .field {
+    @apply w-full rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:border-gold;
+  }
+  .field-checkbox {
+    @apply rounded border-border bg-secondary text-gold focus:ring-0 focus:ring-offset-0;
+  }
+}
