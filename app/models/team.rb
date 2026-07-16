@@ -3,6 +3,7 @@ class Team < ApplicationRecord
 
   has_many :application_questions, -> { order(:position) }, dependent: :destroy
   has_many :team_applications, dependent: :destroy
+  has_many :team_memberships, dependent: :destroy
 
   validates :name, presence: true, length: { maximum: 100 }
   validates_uniqueness_to_tenant :name, case_sensitive: false
