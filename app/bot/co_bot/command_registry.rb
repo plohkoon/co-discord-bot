@@ -41,8 +41,12 @@ module CoBot
         dispatch_table[path]
       end
 
-      # (Re)register every command for one guild. register_application_command upserts.
+      # Sync this guild's commands to the manifest: upsert each top-level command
+      # (which replaces its whole subtree), then delete any command that's no
+      # longer in the manifest (e.g. the old top-level /apply after it moved).
       def register(bot, guild_id)
+        keep = definition.commands.map { |command| command.name.to_s }.to_set
+
         definition.commands.each do |command|
           bot.register_application_command(command.name, description_for(command), server_id: guild_id) do |builder|
             if command.leaf?
@@ -52,6 +56,8 @@ module CoBot
             end
           end
         end
+
+        prune_stale(bot, guild_id, keep)
       end
 
       # The class for a leaf node — from `class:` or discovered from the path.
@@ -65,6 +71,19 @@ module CoBot
       end
 
       private
+
+      # Delete any guild command not in the manifest. register_application_command
+      # only upserts, so removed top-level commands would otherwise linger.
+      def prune_stale(bot, guild_id, keep)
+        bot.get_application_commands(server_id: guild_id).each do |command|
+          next if keep.include?(command.name.to_s)
+
+          command.delete
+          Rails.logger.info("[co-bot] removed stale command /#{command.name}")
+        end
+      rescue => e
+        Rails.logger.warn("[co-bot] pruning stale commands failed: #{e.class}: #{e.message}")
+      end
 
       def register_child(builder, child)
         if child.leaf?
