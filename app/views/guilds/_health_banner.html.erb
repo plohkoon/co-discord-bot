@@ -1,0 +1,36 @@
+<%# Permission health warning (Discord::GuildHealth). Renders nothing when
+    healthy or when the check itself couldn't run (:unknown). %>
+<% case health[:status] %>
+<% when :issues %>
+  <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-6">
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <div class="font-medium text-foreground">Discord permissions need attention</div>
+        <ul class="mt-2 space-y-2 text-sm">
+          <% health[:problems].each do |problem| %>
+            <li>
+              <div class="text-foreground"><%= problem[:summary] %></div>
+              <div class="text-xs text-muted-foreground mt-0.5"><%= problem[:action] %></div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <%= button_to "Re-check", recheck_guild_path(@guild),
+            class: Ui::ButtonComponent.classes(variant: :outline, size: :sm, extra: "shrink-0") %>
+    </div>
+  </div>
+<% when :removed %>
+  <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-6">
+    <div class="flex items-center justify-between gap-4">
+      <div class="min-w-0">
+        <div class="font-medium text-foreground">co-bot has been removed from this server</div>
+        <p class="text-sm text-muted-foreground mt-1">
+          Your teams and applications are kept. Re-invite the bot to manage them again.
+        </p>
+      </div>
+      <%= link_to "Re-invite", discord_install_url(guild_id: @guild.id),
+            target: "_blank", rel: "noopener",
+            class: Ui::ButtonComponent.classes(variant: :outline, size: :sm, extra: "shrink-0") %>
+    </div>
+  </div>
+<% end %>

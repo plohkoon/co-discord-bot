@@ -20,7 +20,12 @@ module GuildScoping
     end
 
     @guild = Guild.find_by(id: id)
-    redirect_to(root_path, alert: "That server isn't set up yet.") unless @guild
+    if @guild.nil?
+      redirect_to(root_path, alert: "That server isn't set up yet.")
+    elsif @guild.removed?
+      @guild = nil
+      redirect_to(root_path, alert: "co-bot was removed from that server. Re-invite it to manage it again.")
+    end
   end
 
   def scope_to_guild(&block)

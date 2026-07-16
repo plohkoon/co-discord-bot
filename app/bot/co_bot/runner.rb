@@ -89,6 +89,10 @@ module CoBot
 
       @bot.ready { |_event| self.class.handle("ready") { sync_all_guilds } }
       @bot.server_create { |event| self.class.handle("server_create") { sync_guild(event.server) } }
+      # ServerDeleteEvent#server is the raw snowflake id — the server is no
+      # longer cached by the time the event fires. discordrb suppresses the
+      # outage-flagged GUILD_DELETE, so this only fires on a genuine removal.
+      @bot.server_delete { |event| self.class.handle("server_delete") { mark_guild_removed(event.server) } }
 
       @bot.member_update do |event|
         self.class.handle("member_update") { Memberships::RoleSync.reconcile(server: event.server, member: event.user, roles: event.roles) }
@@ -169,12 +173,30 @@ module CoBot
       ActsAsTenant.with_tenant(guild) { yield guild }
     end
 
-    def sync_all_guilds = @bot.servers.each_value { |server| sync_guild(server) }
+    # Full two-way reconciliation on every connect: upsert guilds the bot is in,
+    # then mark ones it left while offline (no server_delete fired for those).
+    # discordrb only fires `ready` after every guild has streamed in, so the
+    # gateway cache is complete here.
+    def sync_all_guilds
+      @bot.servers.each_value { |server| sync_guild(server) }
+      mark_departed_guilds
+    end
 
     def sync_guild(server)
       Guild.sync_from_discord(id: server.id, name: server.name)
       CommandRegistry.register(@bot, server.id)
       Rails.logger.info("[co-bot] registered commands for #{server.name} (#{server.id})")
+    end
+
+    def mark_guild_removed(guild_id)
+      Guild.find_by(id: guild_id)&.mark_removed!
+      Rails.logger.info("[co-bot] removed from guild #{guild_id}")
+    end
+
+    def mark_departed_guilds
+      departed = Guild.installed.where.not(id: @bot.servers.keys)
+      count = departed.update_all(removed_at: Time.current, updated_at: Time.current)
+      Rails.logger.info("[co-bot] marked #{count} departed guild(s) as removed") if count.positive?
     end
   end
 end

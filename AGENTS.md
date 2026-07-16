@@ -64,6 +64,8 @@ Background jobs/services that run outside a request (e.g. `Memberships::RoleSync
 
 `ApplicationQuestion` makes application questions configurable per team (Discord modal caps at 5 inputs).
 
+**Guild install-state reconciliation:** `Guild#removed_at` marks servers the bot was kicked from — rows (and team data) are never deleted, so re-inviting restores everything. It's stamped by the `server_delete` handler, by `sync_all_guilds` on every `ready` (two-way: upserts present guilds, marks missing ones), and by `Discord::GuildHealth` on a REST 404; it's cleared by any `Guild.sync_from_discord`. Web treats removed guilds as not installed (`Guild.installed` scope, blocked in `GuildScoping`) and the dashboard shows a re-invite card. `Discord::GuildHealth` (web-side REST via `Discord::BotApi` with the bot token, cached 60s) powers the permission-warning banner on the guild page — it mirrors the invariants `Memberships::RoleManager` enforces at action time.
+
 Business logic lives in `app/services/` (e.g. `Applications::Submit`, `Applications::Decide`, `Memberships::Activate/Archive/RoleSync/RoleManager`), not in commands or controllers.
 
 ### Web UI (ViewComponent design system)

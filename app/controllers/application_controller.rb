@@ -32,7 +32,15 @@ class ApplicationController < ActionController::Base
   def manageable_guilds
     return Guild.none if manageable_guild_ids.empty?
 
-    Guild.where(id: manageable_guild_ids).order(:name)
+    Guild.installed.where(id: manageable_guild_ids).order(:name)
+  end
+
+  # Guilds the user manages but the bot has been kicked from — the dashboard
+  # offers to re-invite it there.
+  def removed_guilds
+    return Guild.none if manageable_guild_ids.empty?
+
+    Guild.removed.where(id: manageable_guild_ids).order(:name)
   end
 
   def can_manage_guild?(guild_id)

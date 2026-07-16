@@ -2,8 +2,8 @@ require "net/http"
 
 module Discord
   # Fetch the signed-in user's guilds via the OAuth token, and keep only the ones
-  # where (a) co-bot is installed and (b) the user has Manage Server. Returns a
-  # compact array of hashes suitable for stashing in the session.
+  # where (a) co-bot is (or was) installed and (b) the user has Manage Server.
+  # Returns a compact array of hashes suitable for stashing in the session.
   class ManageableGuilds
     MANAGE_GUILD = 1 << 5
     ENDPOINT = "https://discord.com/api/v10/users/@me/guilds"
@@ -15,10 +15,12 @@ module Discord
     end
 
     def call
-      installed = Guild.pluck(:id).to_set
+      # Match every guild we have a row for — including removed_at-stamped ones,
+      # so the dashboard can offer to re-invite the bot there.
+      known = Guild.pluck(:id).to_set
       guilds = fetch
-      matched = guilds.select { |g| installed.include?(g["id"].to_i) && manager?(g) }
-      Rails.logger.info("[web] manageable guilds: fetched=#{guilds.size} installed=#{installed.size} matched=#{matched.size}")
+      matched = guilds.select { |g| known.include?(g["id"].to_i) && manager?(g) }
+      Rails.logger.info("[web] manageable guilds: fetched=#{guilds.size} known=#{known.size} matched=#{matched.size}")
       matched.map { |g| { "id" => g["id"].to_s, "name" => g["name"], "icon" => g["icon"] } }
     rescue => e
       Rails.logger.error("[web] fetching Discord guilds failed: #{e.class}: #{e.message}")

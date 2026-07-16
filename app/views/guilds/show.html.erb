@@ -2,6 +2,8 @@
 
 <%= render Ui::PageHeaderComponent.new(title: @guild.name, back_href: root_path, back_label: "Servers") %>
 
+<%= render "health_banner", health: @health %>
+
 <%= render Ui::SectionComponent.new(title: "Teams") do %>
   <% if @teams.empty? %>
     <%= render Ui::EmptyStateComponent.new do %>

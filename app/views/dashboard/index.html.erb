@@ -4,12 +4,12 @@
       title: "Your servers",
       subtitle: "Servers where co-bot is installed and you have Manage Server.") %>
 
-<% if @guilds.empty? %>
+<% if @guilds.empty? && @removed_guilds.empty? %>
   <%= render Ui::EmptyStateComponent.new do %>
     No manageable servers yet. Make sure co-bot is in your server and you have the
     <span class="text-foreground">Manage Server</span> permission.
   <% end %>
-<% else %>
+<% elsif @guilds.any? %>
   <div class="grid gap-3 sm:grid-cols-2">
     <% @guilds.each do |guild| %>
       <%= link_to guild_path(guild.id),
@@ -21,5 +21,27 @@
         </div>
       <% end %>
     <% end %>
+  </div>
+<% end %>
+
+<% if @removed_guilds.any? %>
+  <div class="mt-8">
+    <div class="text-sm font-medium text-foreground">co-bot was removed from these servers</div>
+    <p class="text-xs text-muted-foreground mt-1">
+      Your teams and applications are kept — re-invite the bot to pick up where you left off.
+    </p>
+    <div class="grid gap-3 sm:grid-cols-2 mt-3">
+      <% @removed_guilds.each do |guild| %>
+        <div class="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-4">
+          <%= render Ui::AvatarComponent.new(name: guild.name, size: :md) %>
+          <div class="min-w-0 flex-1">
+            <div class="font-medium text-muted-foreground truncate"><%= guild.name %></div>
+          </div>
+          <%= link_to "Re-invite", discord_install_url(guild_id: guild.id),
+                target: "_blank", rel: "noopener",
+                class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+        </div>
+      <% end %>
+    </div>
   </div>
 <% end %>
