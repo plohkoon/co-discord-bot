@@ -49,7 +49,25 @@ module CoBot
         row.button(label: "Accept", style: :success, custom_id: CoBot::Router.custom_id("decide", "accept", application.id))
         row.button(label: "Reject", style: :danger,  custom_id: CoBot::Router.custom_id("decide", "reject", application.id))
       end
+      add_notes_row(view, application)
       view
+    end
+
+    # After a decision, keep the notes buttons (drop Accept/Reject).
+    def notes_only_view(application)
+      view = Discordrb::Webhooks::View.new
+      add_notes_row(view, application)
+      view
+    end
+
+    def add_notes_row(view, application)
+      membership_id = application.team_membership_id
+      return unless membership_id
+
+      view.row do |row|
+        row.button(label: "📝 Add note",   style: :secondary, custom_id: CoBot::Router.custom_id("note", membership_id))
+        row.button(label: "📋 View notes", style: :secondary, custom_id: CoBot::Router.custom_id("notes", membership_id))
+      end
     end
 
     def answer_fields(application)

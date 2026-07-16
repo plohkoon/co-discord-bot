@@ -26,4 +26,9 @@ CoBot::Router.draw do
   # custom_id and we re-attach these handlers on boot.
   modal  :apply,  to: "apply#create", as: [ :team_id ]
   button :decide, to: "apply#decide", as: [ :decision, :application_id ]
+
+  # Officer-only membership notes (buttons on the review message).
+  button :note,      to: "notes#new",    as: [ :membership_id ]
+  modal  :note_form, to: "notes#create", as: [ :membership_id ]
+  button :notes,     to: "notes#index",  as: [ :membership_id ]
 end

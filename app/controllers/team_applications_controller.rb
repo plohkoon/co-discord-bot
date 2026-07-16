@@ -10,6 +10,7 @@ class TeamApplicationsController < ApplicationController
   end
 
   def show
-    @application = TeamApplication.includes(:team, :application_answers).find(params[:id])
+    @application = TeamApplication.includes(:team, :application_answers, team_membership: :membership_notes).find(params[:id])
+    @membership = @application.team_membership
   end
 end

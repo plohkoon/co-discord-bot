@@ -64,6 +64,15 @@ class ApplicationCommand
   def current_guild = guild
   def server = event.server
 
+  # Is the current member an officer of this team, or a server admin?
+  def officer_for?(team)
+    member = current_user
+    return false unless member.respond_to?(:roles)
+
+    member.permission?(:administrator) || member.permission?(:manage_server) ||
+      member.roles.any? { |role| role.id == team.officer_role_id }
+  end
+
   # --- response API: each call is exactly one interaction ack ---
   def respond(content = nil, ephemeral: true, embeds: nil, components: nil)
     ack!

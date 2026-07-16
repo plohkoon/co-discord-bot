@@ -69,21 +69,12 @@ class ApplyCommand < ApplicationCommand
     when :error
       respond("⚠️ #{result.error}")
     else
-      update_message(embeds: [ CoBot::ReviewMessage.decided_embed(application.reload) ], components: [])
+      update_message(embeds: [ CoBot::ReviewMessage.decided_embed(application.reload) ],
+                     components: CoBot::ReviewMessage.notes_only_view(application))
     end
   end
 
   private
-
-  # Only a team's officers (or server admins) may accept/reject its applications.
-  # Defence-in-depth on top of restricting the review channel's visibility.
-  def officer_for?(team)
-    member = current_user
-    return false unless member.respond_to?(:roles)
-
-    member.permission?(:administrator) || member.permission?(:manage_server) ||
-      member.roles.any? { |role| role.id == team.officer_role_id }
-  end
 
   def resolve_team(raw)
     raw = raw.to_s
