@@ -28,7 +28,8 @@ Copy `.env.example` to `.env` and fill in:
 
 - `DISCORD_BOT_TOKEN` — bot token from the Developer Portal. **Also enable the Server Members Intent** on the Bot page; co-bot uses it to auto-sync memberships when roles change.
 - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` — for web login. Add `http://localhost:3000/auth/discord/callback` as an OAuth2 redirect.
-- `DISCORD_TEST_GUILD_ID` — your test server's ID. Slash commands register to this one guild instantly (global registration can take up to an hour).
+
+Use a **separate Discord application per environment** (e.g. "co-bot dev" locally): a shared bot token delivers every gateway event to all connected processes, which then fight over interactions and command sync. Commands register per guild the moment the bot joins, so no test-guild ID is needed.
 
 The gateway idles gracefully when `DISCORD_BOT_TOKEN` is missing, so `bin/dev` won't crash-loop before credentials are set.
 

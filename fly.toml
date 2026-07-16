@@ -11,6 +11,8 @@ console_command = '/rails/bin/rails console'
 [env]
   DATABASE_URL = 'sqlite3:///data/production.sqlite3'
   PORT = '8080'
+  # Puma forks the supervised Discord gateway child (lib/puma/plugin/discord_bot.rb).
+  RUN_DISCORD_BOT = '1'
 
 [processes]
   app = "./bin/rails server"

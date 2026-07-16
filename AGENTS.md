@@ -31,7 +31,7 @@ bin/bundler-audit         # gem CVE scan (runs in CI)
 
 CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, rubocop, `test`, and `test:system`.
 
-Environment: copy `.env.example` → `.env`. Needs `DISCORD_BOT_TOKEN` (with **Server Members Intent** enabled in the portal), `DISCORD_CLIENT_ID/SECRET` for web OAuth, and `DISCORD_TEST_GUILD_ID` (commands register instantly to one dev guild; global registration takes up to an hour). `bin/bot` idles gracefully when the token is missing, so `bin/dev` won't crash-loop before credentials exist.
+Environment: copy `.env.example` → `.env`. Needs `DISCORD_BOT_TOKEN` (with **Server Members Intent** enabled in the portal) and `DISCORD_CLIENT_ID/SECRET` for web OAuth — from a **dev-only Discord application**; production uses a separate app whose credentials live in Fly secrets (a shared token would deliver gateway events to both environments). Commands register per guild on join. `bin/bot` idles gracefully when the token is missing, so `bin/dev` won't crash-loop before credentials exist.
 
 ## Architecture
 
