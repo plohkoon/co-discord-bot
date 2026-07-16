@@ -12,7 +12,7 @@ Rails 8, Ruby 3.4.1, discordrb 3.8, SQLite (WAL), Solid Queue, ViewComponent + T
 
 ```bash
 bin/setup                 # install gems + prepare DB (add --skip-server to not boot)
-bin/dev                   # foreman: web (bin/rails server) + tailwind watch + bin/bot
+bin/dev                   # foreman: web (bin/rails server) + tailwind watch + bin/bot + bin/jobs
 bin/rails server          # web only
 bin/bot                   # Discord gateway only (standalone, boots full Rails env)
 
@@ -37,7 +37,7 @@ Environment: copy `.env.example` → `.env`. Needs `DISCORD_BOT_TOKEN` (with **S
 
 ### One process, three concerns
 
-In development, `bin/dev` runs web, CSS watch, and bot as **separate Procfile processes**. In production, set `RUN_DISCORD_BOT=1` and `bin/rails server` boots everything in one unit: `config/puma.rb` loads `plugin :discord_bot` (`lib/puma/plugin/discord_bot.rb`), which **forks a supervised child** running the gateway — mirroring how Solid Queue's Puma plugin forks. The child gets its own AR connection pool (it clears inherited connections on fork), and the plugin ties the child's lifecycle to Puma's: if either dies, both come down so the process manager restarts the whole unit.
+In development, `bin/dev` runs web, CSS watch, bot, and jobs (`bin/jobs`) as **separate Procfile processes**; jobs go through Solid Queue in dev too (own SQLite queue DB), matching production. In production, set `RUN_DISCORD_BOT=1` and `SOLID_QUEUE_IN_PUMA=1` (both in fly.toml) and `bin/rails server` boots everything in one unit: `config/puma.rb` loads `plugin :discord_bot` (`lib/puma/plugin/discord_bot.rb`), which **forks a supervised child** running the gateway — mirroring how Solid Queue's Puma plugin forks. The child gets its own AR connection pool (it clears inherited connections on fork), and the plugin ties the child's lifecycle to Puma's: if either dies, both come down so the process manager restarts the whole unit.
 
 **The bot and web app never share in-process state** — they communicate only through the shared DB (and Solid Queue jobs). This is deliberate; keep it that way.
 
@@ -61,7 +61,7 @@ Background jobs/services that run outside a request (e.g. `Memberships::RoleSync
 
 ### Domain model
 
-`TeamMembership` is the durable person×team anchor (not the application): status `pending|active|archived`, `has_many :team_applications` (dated events) and `:membership_notes`. `TeamApplication` belongs to a membership with a `source` enum (`applied` via /apply, `manual` when a role is granted directly). State machine: apply → pending; accept or manual role grant → active; reject / role removed / member leaves → archived; re-apply on archived → pending. Role auto-sync uses the **Server Members privileged intent**: a `member_update` listener reconciles each team's role membership; `member_leave` archives. `Memberships::Backfill` sweeps existing role holders into a new team at `/team create` — it runs **after** the interaction ack (chunking members can take seconds; the count arrives as a follow-up message). `Memberships::RoleManager` is the hierarchy-safe grant/revoke shared by buttons and commands (the bot needs Manage Roles **above** the team role).
+`TeamMembership` is the durable person×team anchor (not the application): status `pending|active|archived`, `has_many :team_applications` (dated events) and `:membership_notes`. `TeamApplication` belongs to a membership with a `source` enum (`applied` via /apply, `manual` when a role is granted directly). State machine: apply → pending; accept or manual role grant → active; reject / role removed / member leaves → archived; re-apply on archived → pending. Role auto-sync uses the **Server Members privileged intent**: a `member_update` listener reconciles each team's role membership; `member_leave` archives. `Memberships::Backfill` sweeps existing role holders into a new team: `/team create` enqueues `TeamBackfillJob` (Solid Queue), which pages members over REST (`BotApi#each_guild_member` — no gateway needed) and reports the count via an interaction-token follow-up (`BotApi#interaction_followup`, valid ~15 min after the ack; best-effort). `Memberships::RoleManager` is the hierarchy-safe grant/revoke shared by buttons and commands (the bot needs Manage Roles **above** the team role).
 
 `ApplicationQuestion` makes application questions configurable per team (Discord modal caps at 5 inputs).
 

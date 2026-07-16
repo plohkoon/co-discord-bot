@@ -36,7 +36,7 @@ The gateway idles gracefully when `DISCORD_BOT_TOKEN` is missing, so `bin/dev` w
 ## Development
 
 ```bash
-bin/dev                                    # web, CSS watch, and bot (foreman)
+bin/dev                                    # web, CSS watch, bot, and jobs (foreman)
 bin/rails server                           # web only
 bin/bot                                    # Discord gateway only
 

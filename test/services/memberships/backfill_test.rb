@@ -4,15 +4,11 @@ module Memberships
   class BackfillTest < ActiveSupport::TestCase
     TEAM_ROLE_ID = 500
 
-    FakeMember = Struct.new(:id, :username, :bot) do
-      def bot_account? = bot
-    end
+    # Stands in for Discord::BotApi — yields raw REST member hashes.
+    class FakeApi
+      def initialize(members) = @members = members
 
-    FakeRole = Struct.new(:id, :members)
-
-    class FakeServer
-      def initialize(roles) = @roles = roles
-      def role(id) = @roles.find { |r| r.id == id }
+      def each_guild_member(_guild_id, &block) = @members.each(&block)
     end
 
     def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
@@ -23,47 +19,48 @@ module Memberships
       end
     end
 
-    def backfill(server)
-      ActsAsTenant.with_tenant(guild) { Backfill.call(team: team, server: server) }
+    def rest_member(id, username, roles:, bot: false)
+      user = { "id" => id.to_s, "username" => username }
+      user["bot"] = true if bot
+      { "user" => user, "roles" => roles.map(&:to_s) }
+    end
+
+    def backfill(members)
+      ActsAsTenant.with_tenant(guild) { Backfill.call(team: team, api: FakeApi.new(members)) }
     end
 
     test "activates every human holder of the team role with a manual accepted application" do
-      server = FakeServer.new([ FakeRole.new(TEAM_ROLE_ID, [
-        FakeMember.new(11, "alice", false),
-        FakeMember.new(12, "bob", false),
-        FakeMember.new(13, "beep", true) # bot — skipped
-      ]) ])
+      count = backfill([
+        rest_member(11, "alice", roles: [ TEAM_ROLE_ID ]),
+        rest_member(12, "bob",   roles: [ TEAM_ROLE_ID, 999 ]),
+        rest_member(13, "carol", roles: [ 999 ]),               # different role
+        rest_member(14, "beep",  roles: [ TEAM_ROLE_ID ], bot: true)
+      ])
 
-      assert_equal 2, backfill(server)
-
+      assert_equal 2, count
       ActsAsTenant.with_tenant(guild) do
         assert_equal %w[11 12], TeamMembership.active.pluck(:discord_user_id).map(&:to_s).sort
-        membership = TeamMembership.find_by(discord_user_id: 11)
-        application = membership.team_applications.accepted.sole
+        application = TeamMembership.find_by(discord_user_id: 11).team_applications.accepted.sole
         assert_equal "manual", application.source
-        assert_not TeamMembership.exists?(discord_user_id: 13)
       end
     end
 
     test "is idempotent and reactivates archived members" do
-      member = FakeMember.new(11, "alice", false)
-      server = FakeServer.new([ FakeRole.new(TEAM_ROLE_ID, [ member ]) ])
+      members = [ rest_member(11, "alice", roles: [ TEAM_ROLE_ID ]) ]
 
-      backfill(server)
-      ActsAsTenant.with_tenant(guild) do
-        Archive.for(team: team, discord_user_id: 11)
-      end
+      backfill(members)
+      ActsAsTenant.with_tenant(guild) { Archive.for(team: team, discord_user_id: 11) }
 
-      assert_equal 1, backfill(server)
+      assert_equal 1, backfill(members)
       ActsAsTenant.with_tenant(guild) do
         assert_equal 1, TeamMembership.where(discord_user_id: 11).count
         assert TeamMembership.find_by(discord_user_id: 11).active?
       end
     end
 
-    test "returns 0 when the role no longer exists" do
-      assert_equal 0, backfill(FakeServer.new([]))
-      assert_equal 0, backfill(nil)
+    test "returns 0 when nobody holds the role" do
+      assert_equal 0, backfill([ rest_member(11, "alice", roles: [ 999 ]) ])
+      assert_equal 0, backfill([])
     end
   end
 end

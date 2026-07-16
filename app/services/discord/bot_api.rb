@@ -27,18 +27,51 @@ module Discord
 
     def guild_member(guild_id, user_id) = get("/guilds/#{guild_id}/members/#{user_id}")
 
+    # Page through the guild's full member list — the REST equivalent of
+    # gateway member chunking, usable from web/job processes. Yields each raw
+    # member hash ({"user" => {...}, "roles" => [...], ...}).
+    MEMBERS_PAGE_SIZE = 1000
+
+    def each_guild_member(guild_id)
+      after = 0
+      loop do
+        page = get("/guilds/#{guild_id}/members?limit=#{MEMBERS_PAGE_SIZE}&after=#{after}")
+        page.each { |member| yield member }
+        break if page.size < MEMBERS_PAGE_SIZE
+
+        after = page.map { |m| m.dig("user", "id").to_i }.max
+      end
+    end
+
+    # Follow-up message to an already-acked interaction. Authenticated by the
+    # token in the path (valid ~15 minutes after the ack), so any process can
+    # send it — no gateway connection involved.
+    def interaction_followup(application_id:, token:, content:, ephemeral: true)
+      post("/webhooks/#{application_id}/#{token}", "content" => content, "flags" => ephemeral ? 64 : 0)
+    end
+
     private
 
     def get(path)
-      uri = URI("#{BASE}#{path}")
-      request = Net::HTTP::Get.new(uri)
+      perform(Net::HTTP::Get.new(URI("#{BASE}#{path}")), path)
+    end
+
+    def post(path, body)
+      request = Net::HTTP::Post.new(URI("#{BASE}#{path}"))
+      request["Content-Type"] = "application/json"
+      request.body = JSON.generate(body)
+      perform(request, path)
+    end
+
+    def perform(request, path)
       request["Authorization"] = "Bot #{@token}"
+      uri = request.uri
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 5) do |http|
         http.request(request)
       end
 
       case response
-      when Net::HTTPSuccess               then JSON.parse(response.body)
+      when Net::HTTPSuccess               then response.body.presence && JSON.parse(response.body)
       when Net::HTTPNotFound, Net::HTTPForbidden then raise NotFound, "#{path} -> HTTP #{response.code}"
       else raise Error, "#{path} -> HTTP #{response.code}"
       end

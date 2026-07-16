@@ -13,6 +13,8 @@ console_command = '/rails/bin/rails console'
   PORT = '8080'
   # Puma forks the supervised Discord gateway child (lib/puma/plugin/discord_bot.rb).
   RUN_DISCORD_BOT = '1'
+  # Puma also supervises the Solid Queue workers (same fork-under-Puma pattern).
+  SOLID_QUEUE_IN_PUMA = '1'
 
 [processes]
   app = "./bin/rails server"
