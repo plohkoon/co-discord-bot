@@ -12,6 +12,11 @@ class GuildsController < ApplicationController
     @led_team_ids = current_user ? TeamOfficer.where(discord_user_id: current_user.discord_id).pluck(:team_id).to_set : Set.new
     # Permission health is a manager concern (and a REST call) — skip for members.
     @health = can_manage? ? Discord::GuildHealth.call(guild: @guild, teams: @teams) : nil
+    # Curated roster lists, editable in the settings section (managers only).
+    if can_manage?
+      @team_categories = TeamCategory.ordered.to_a
+      @team_types = TeamType.ordered.to_a
+    end
   end
 
   # "Re-check" button on the health banner: bust the cache and re-render.

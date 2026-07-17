@@ -9,22 +9,32 @@
 </div>
 
 <% if can_manage? %>
-<%= render Ui::SectionComponent.new(title: "Roster details", classes: "mb-12") do %>
+<%= render Ui::SectionComponent.new(title: "Team details", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Shown in the server's team directory (<code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team roster</code>).
+    Categories and team types come from this server's lists (edited on the server page).
     Team leads are read live from the officer role, so they aren't edited here.
   </p>
   <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
         class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
     <div class="grid gap-3 sm:grid-cols-2">
+      <label class="block sm:col-span-2">
+        <span class="text-xs text-muted-foreground">Team name</span>
+        <%= f.text_field :name, required: true, maxlength: 100, class: "field w-full mt-1" %>
+      </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Category (directory header)</span>
-        <%= f.text_field :category_name, value: @team.team_category&.name,
-              placeholder: "e.g. PvE Teams ⚔️", class: "field w-full mt-1" %>
+        <%= f.select :team_category_id, options_for_select(@team_categories.map { |c| [ c.name, c.id ] }, @team.team_category_id),
+              { include_blank: "No category" }, class: "field w-full mt-1" %>
       </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Team type</span>
-        <%= f.text_field :team_type, placeholder: "e.g. Heroic Team", class: "field w-full mt-1" %>
+        <%= f.select :team_type_id, options_for_select(@team_types.map { |t| [ t.name, t.id ] }, @team.team_type_id),
+              { include_blank: "No type" }, class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Emote (shown before the team name)</span>
+        <%= f.text_field :emote, placeholder: "e.g. ⚔️ or a custom <:emote:id>", class: "field w-full mt-1" %>
       </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Progression</span>
