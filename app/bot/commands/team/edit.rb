@@ -1,12 +1,16 @@
 module Commands
   module Team
-    # Update a team's roster details (category + the free-form lines shown by
-    # /team roster). Only options actually passed are changed.
+    # Update a team's name and roster details (category, type + the free-form
+    # lines shown by /team roster). Only options actually passed are changed.
     class Edit < Commands::Base
-      description "Update a team's roster details"
+      include RosterLookups
+
+      description "Update a team's name and roster details"
       string :team, "The team to update", required: true, autocomplete: true
-      string :category, "Roster section header (e.g. PvE Teams ⚔️)", autocomplete: true
-      string :team_type, "Roster line (e.g. Heroic Team)"
+      string :name, "New team name (renames the team)"
+      string :category, "Roster section header — pick an existing category", autocomplete: true
+      string :team_type, "Team type — pick from this server's list", autocomplete: true
+      string :emote, "Emoji shown before the team name in the roster (unicode or custom)"
       string :progression, "Roster line (e.g. Currently 7/9 H)"
       string :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
@@ -18,7 +22,21 @@ module Commands
         team = resolve_team(option(:team))
         return respond("Pick a team from the list.") unless team
 
-        team.team_category = TeamCategory.locate(option(:category)) if option(:category)
+        if option(:category)
+          category = TeamCategory.named(option(:category))
+          return respond(unknown_choice_message("category", option(:category))) unless category
+
+          team.team_category = category
+        end
+
+        if option(:team_type)
+          team_type = TeamType.named(option(:team_type))
+          return respond(unknown_choice_message("team type", option(:team_type))) unless team_type
+
+          team.team_type = team_type
+        end
+
+        team.name = option(:name).to_s.strip if option(:name)
         team.position = option(:position).to_i unless option(:position).nil?
         ::Team::ROSTER_FIELDS.each do |field|
           team[field] = option(field).to_s.strip if option(field)
@@ -34,10 +52,6 @@ module Commands
 
       def autocomplete_team(query)
         current_guild.teams.active.matching(query).limit(25).to_h { |team| [ team.name, team.id.to_s ] }
-      end
-
-      def autocomplete_category(query)
-        TeamCategory.ordered.where("name LIKE ?", "%#{query.to_s.strip}%").limit(25).to_h { |c| [ c.name, c.name ] }
       end
     end
   end

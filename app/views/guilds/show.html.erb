@@ -46,3 +46,33 @@
     </div>
   <% end %>
 <% end %>
+
+<% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Roster settings", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Teams pick from these lists (here, on team pages, and via
+    <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team category|type</code> in Discord).
+    Renames, reorders, and removals update any posted roster automatically.
+  </p>
+  <div class="grid gap-6 md:grid-cols-2">
+    <div>
+      <h3 class="text-xs text-muted-foreground mb-2">Categories (directory headers)</h3>
+      <div class="space-y-3">
+        <% @team_categories.each do |category| %>
+          <%= render "roster_option", guild: @guild, record: category %>
+        <% end %>
+        <%= render "roster_option", guild: @guild, record: TeamCategory.new %>
+      </div>
+    </div>
+    <div>
+      <h3 class="text-xs text-muted-foreground mb-2">Team types</h3>
+      <div class="space-y-3">
+        <% @team_types.each do |team_type| %>
+          <%= render "roster_option", guild: @guild, record: team_type %>
+        <% end %>
+        <%= render "roster_option", guild: @guild, record: TeamType.new %>
+      </div>
+    </div>
+  </div>
+<% end %>
+<% end %>

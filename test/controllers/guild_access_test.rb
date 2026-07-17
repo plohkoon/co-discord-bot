@@ -48,7 +48,7 @@ class GuildAccessTest < ActionDispatch::IntegrationTest
     get guild_team_path(@guild, @team)
     assert_response :success
     # Admin-only sections stay hidden from leads.
-    assert_select "h2", text: /Roster details/, count: 0
+    assert_select "h2", text: /Team details/, count: 0
     assert_select "h2", text: /Application questions/, count: 0
 
     get guild_team_path(@guild, @other_team)

@@ -92,10 +92,11 @@ module CoBot
     def team_block(team)
       lead_ids = team.team_officers.ordered.pluck(:discord_user_id)
       # Heading-sized: container contents render in Discord's compact card
-      # style, so the team name line gets bumped back up for prominence.
-      lines = [ "### <@&#{team.team_role_id}>" ]
+      # style, so the team name line gets bumped back up for prominence. The
+      # optional emote sits right before the role mention.
+      lines = [ [ "###", team.emote.presence, "<@&#{team.team_role_id}>" ].compact.join(" ") ]
       summary = [
-        team.team_type.presence && "*#{team.team_type}*",
+        team.team_type && "*#{team.team_type.name}*",
         team.progression.presence,
         team.requirements.presence
       ].compact.join(" | ")

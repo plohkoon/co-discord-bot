@@ -7,16 +7,17 @@ class TeamsController < ApplicationController
   def new
     @team = @guild.teams.new
     load_discord_options
+    load_roster_options
   end
 
   def create
     attrs = params.require(:team).permit(:name, :team_role_id, :officer_role_id, :review_channel_id,
-                                         :position, :category_name, *Team::ROSTER_FIELDS)
-    category_name = attrs.delete(:category_name)
-    @team = @guild.teams.new(attrs)
-    @team.team_category = TeamCategory.locate(category_name)
+                                         :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+    @team = @guild.teams.new(attrs.except(:team_category_id, :team_type_id))
+    assign_roster_choices(attrs)
 
     load_discord_options
+    load_roster_options
     unless valid_discord_choices?
       flash.now[:alert] = "Pick the team role, officer role, and review channel from the lists."
       return render :new, status: :unprocessable_entity
@@ -39,6 +40,7 @@ class TeamsController < ApplicationController
     require_team_access
     return if performed?
 
+    load_roster_options if can_manage?
     @questions = @team.application_questions.ordered
     @new_question = @team.application_questions.build(required: true)
 
@@ -48,24 +50,38 @@ class TeamsController < ApplicationController
     @app_counts = TeamApplication.where(team_membership_id: memberships.map(&:id)).group(:team_membership_id).count
   end
 
-  # Roster details (category + the free-form lines shown by /team roster).
+  # Name + roster details (category, type + the free-form lines shown by
+  # /team roster).
   def update
     @team = @guild.teams.find(params[:id])
-    attrs = params.require(:team).permit(:category_name, :position, *Team::ROSTER_FIELDS)
-    category_name = attrs.delete(:category_name)
+    attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
 
-    @team.assign_attributes(attrs)
-    @team.team_category = TeamCategory.locate(category_name) # blank clears it
+    @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
+    assign_roster_choices(attrs)
 
     if @team.save
       RosterRefreshJob.perform_later(guild_id: @guild.id)
-      redirect_to guild_team_path(@guild, @team), notice: "Roster details updated."
+      redirect_to guild_team_path(@guild, @team), notice: "Team updated."
     else
       redirect_to guild_team_path(@guild, @team), alert: @team.errors.full_messages.to_sentence
     end
   end
 
   private
+
+  # Category and type come from the guild's curated lists. Lookups are
+  # tenant-scoped, so ids from another guild (or a blank select) resolve to
+  # nil and clear the association.
+  def assign_roster_choices(attrs)
+    @team.team_category = TeamCategory.find_by(id: attrs[:team_category_id])
+    @team.team_type = TeamType.find_by(id: attrs[:team_type_id])
+  end
+
+  # Select options for the roster form.
+  def load_roster_options
+    @team_categories = TeamCategory.ordered.to_a
+    @team_types = TeamType.ordered.to_a
+  end
 
   # Role/channel pickers come from Discord over REST (bot token), cached
   # briefly. Empty lists (API down / bot missing) block creation safely.

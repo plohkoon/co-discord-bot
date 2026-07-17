@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_004156) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_010001) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -124,12 +124,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_004156) do
     t.index ["team_id", "discord_user_id"], name: "index_team_officers_on_team_id_and_discord_user_id", unique: true
   end
 
+  create_table "team_types", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "guild_id", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["guild_id", "name"], name: "index_team_types_on_guild_id_and_name", unique: true
+    t.index ["guild_id"], name: "index_team_types_on_guild_id"
+  end
+
   create_table "teams", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.text "current_needs"
     t.text "date_and_time"
     t.text "description"
+    t.string "emote"
     t.bigint "guild_id", null: false
     t.string "name", null: false
     t.bigint "officer_role_id", null: false
@@ -141,11 +152,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_004156) do
     t.bigint "roster_message_id"
     t.integer "team_category_id"
     t.bigint "team_role_id", null: false
-    t.text "team_type"
+    t.integer "team_type_id"
     t.datetime "updated_at", null: false
     t.index ["guild_id", "name"], name: "index_teams_on_guild_id_and_name", unique: true
     t.index ["guild_id"], name: "index_teams_on_guild_id"
     t.index ["team_category_id"], name: "index_teams_on_team_category_id"
+    t.index ["team_type_id"], name: "index_teams_on_team_type_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -173,6 +185,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_004156) do
   add_foreign_key "team_memberships", "teams"
   add_foreign_key "team_officers", "guilds"
   add_foreign_key "team_officers", "teams"
+  add_foreign_key "team_types", "guilds"
   add_foreign_key "teams", "guilds"
   add_foreign_key "teams", "team_categories"
+  add_foreign_key "teams", "team_types"
 end

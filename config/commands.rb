@@ -18,6 +18,20 @@ CoBot::CommandRegistry.draw do
       command :note
       command :remove
     end
+
+    # Curated roster lists — teams pick from these; admins manage them here
+    # or on the web guild page.
+    command :category, "Manage roster categories" do
+      command :add
+      command :edit
+      command :remove
+    end
+
+    command :type, "Manage team types" do
+      command :add
+      command :edit
+      command :remove
+    end
   end
 
   # Persistent components (buttons/modals). The custom_id key + params come from

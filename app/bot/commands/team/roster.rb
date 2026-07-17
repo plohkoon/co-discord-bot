@@ -9,7 +9,7 @@ module Commands
       admin_only!
 
       def call
-        teams = current_guild.teams.active.includes(:team_category, :team_officers).to_a
+        teams = current_guild.teams.active.includes(:team_category, :team_type, :team_officers).to_a
         return respond("No active teams to list yet — `/team create` one first.") if teams.empty?
 
         channel_id = option(:channel) || event.channel&.id

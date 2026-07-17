@@ -13,7 +13,7 @@ class RosterRefreshJob < ApplicationJob
     guild = Guild.find_by(id: guild_id) or return
 
     ActsAsTenant.with_tenant(guild) do
-      teams = Team.active.includes(:team_category, :team_officers).to_a
+      teams = Team.active.includes(:team_category, :team_type, :team_officers).to_a
 
       # Messages come from ALL teams' recorded ids (a message whose teams went
       # inactive must still be reclaimed), newest channel wins (snowflakes

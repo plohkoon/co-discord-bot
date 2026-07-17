@@ -2,14 +2,17 @@ class Team < ApplicationRecord
   include GuildScoped
 
   belongs_to :team_category, optional: true
+  belongs_to :team_type, optional: true
   has_many :application_questions, -> { order(:position) }, dependent: :destroy
   has_many :team_applications, dependent: :destroy
   has_many :team_memberships, dependent: :destroy
   has_many :team_officers, dependent: :delete_all
 
-  # Free-form roster lines shown in the /team roster directory (and the web
-  # team page). All optional; rendered verbatim.
-  ROSTER_FIELDS = %i[team_type progression requirements date_and_time current_needs].freeze
+  # Free-form roster details shown in the /team roster directory (and the web
+  # team page). All optional; rendered verbatim. `emote` decorates the heading
+  # (unicode or <:custom:id>); the rest are lines. The team-type line is NOT
+  # free-form — it's picked from the guild's curated TeamType list.
+  ROSTER_FIELDS = %i[emote progression requirements date_and_time current_needs].freeze
 
   validates :name, presence: true, length: { maximum: 100 }
   validates_uniqueness_to_tenant :name, case_sensitive: false

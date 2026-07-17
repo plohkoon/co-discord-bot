@@ -8,10 +8,11 @@ class RosterMessageTest < ActiveSupport::TestCase
 
   def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
 
-  def create_team(name, category: nil, position: 0, **fields)
+  def create_team(name, category: nil, team_type: nil, position: 0, **fields)
     ActsAsTenant.with_tenant(guild) do
+      type = team_type && (TeamType.named(team_type) || TeamType.create!(name: team_type))
       Team.create!(name: name, team_role_id: 100, officer_role_id: 200, review_channel_id: 300,
-                   team_category: category, position: position, **fields)
+                   team_category: category, team_type: type, position: position, **fields)
     end
   end
 
@@ -41,6 +42,13 @@ class RosterMessageTest < ActiveSupport::TestCase
       __Date and Time:__ Tuesdays 7-10pm CT
       __Current Needs:__ DPS
     BLOCK
+  end
+
+  test "team_block renders the emote before the team name" do
+    team = create_team("Raiders", emote: "⚔️")
+    block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
+
+    assert block.start_with?("### ⚔️ <@&100>\n"), "expected emote in the heading, got: #{block.lines.first}"
   end
 
   test "team_block with no details shows placeholder dashes and no summary line" do

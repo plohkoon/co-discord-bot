@@ -1,0 +1,20 @@
+<%# One row of a curated roster list (a TeamCategory or TeamType): rename +
+    reposition inline, or delete. `record` may be a new record (the add row). %>
+<div class="rounded-lg border border-border bg-card p-3">
+  <%= form_with model: [ guild, record ], class: "flex items-center gap-2" do |f| %>
+    <%= f.text_field :name, placeholder: "Name", maxlength: 100, required: true, class: "field flex-1 min-w-0" %>
+    <%= f.number_field :position, placeholder: "Pos", title: "Sort order (lower first; blank = last)",
+          class: "field w-20 shrink-0" %>
+    <%= f.submit (record.persisted? ? "Save" : "Add"),
+          class: "#{Ui::ButtonComponent.classes(variant: record.persisted? ? :outline : :gold, size: :sm)} shrink-0" %>
+  <% end %>
+  <% if record.persisted? %>
+    <div class="mt-1.5 text-right">
+      <%= button_to "Delete", [ guild, record ], method: :delete,
+            class: Ui::ButtonComponent.classes(variant: :danger, size: :sm),
+            form: { data: { turbo_confirm: record.is_a?(TeamCategory) ?
+              "Delete this category? Its teams become uncategorized." :
+              "Delete this team type? Teams using it lose their type line." } } %>
+    </div>
+  <% end %>
+</div>

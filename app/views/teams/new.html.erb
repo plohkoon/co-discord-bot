@@ -42,14 +42,23 @@
 
   <div class="border-t border-border pt-4">
     <div class="text-sm font-medium text-foreground mb-3">Roster details <span class="text-xs text-muted-foreground font-normal">(all optional — shown by /team roster)</span></div>
+    <p class="text-xs text-muted-foreground mb-3">
+      Categories and team types come from this server's lists — edit them on the server page.
+    </p>
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="block">
         <span class="text-xs text-muted-foreground">Category (directory header)</span>
-        <%= f.text_field :category_name, placeholder: "e.g. PvE Teams ⚔️", class: "field w-full mt-1" %>
+        <%= f.select :team_category_id, options_for_select(@team_categories.map { |c| [ c.name, c.id ] }, @team.team_category_id),
+              { include_blank: "No category" }, class: "field w-full mt-1" %>
       </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Team type</span>
-        <%= f.text_field :team_type, placeholder: "e.g. Heroic Team", class: "field w-full mt-1" %>
+        <%= f.select :team_type_id, options_for_select(@team_types.map { |t| [ t.name, t.id ] }, @team.team_type_id),
+              { include_blank: "No type" }, class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Emote (shown before the team name)</span>
+        <%= f.text_field :emote, placeholder: "e.g. ⚔️ or a custom <:emote:id>", class: "field w-full mt-1" %>
       </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Progression</span>

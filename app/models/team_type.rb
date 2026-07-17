@@ -1,9 +1,11 @@
-# A roster section header ("PvE Teams ⚔️"). Manage Server users curate the
-# list on the web guild page; teams pick from it — categories are never
-# created on the fly from a team form or command. Ordered by position in the
-# directory.
-class TeamCategory < ApplicationRecord
+# The per-guild vocabulary for a team's "type" roster line ("Heroic Team").
+# Every guild starts with DEFAULT_NAMES (seeded by Guild.sync_from_discord);
+# Manage Server users curate the list on the web guild page, and teams pick
+# from it — types are never created on the fly from a team form or command.
+class TeamType < ApplicationRecord
   include GuildScoped
+
+  DEFAULT_NAMES = [ "Normal Team", "Heroic Team", "Mythic Team", "PvP Team" ].freeze
 
   has_many :teams, dependent: :nullify
 
