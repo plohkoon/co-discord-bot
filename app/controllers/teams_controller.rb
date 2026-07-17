@@ -23,6 +23,13 @@ class TeamsController < ApplicationController
       return render :new, status: :unprocessable_entity
     end
 
+    emote, emote_error = resolve_emote(@team.emote)
+    if emote_error
+      flash.now[:alert] = emote_error
+      return render :new, status: :unprocessable_entity
+    end
+    @team.emote = emote
+
     if @team.save
       @team.seed_default_questions!
       # Same sweep as /team create: existing role holders become members and
@@ -59,6 +66,11 @@ class TeamsController < ApplicationController
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
 
+    emote, emote_error = resolve_emote(@team.emote)
+    return redirect_to guild_team_path(@guild, @team), alert: emote_error if emote_error
+
+    @team.emote = emote
+
     if @team.save
       RosterRefreshJob.perform_later(guild_id: @guild.id)
       redirect_to guild_team_path(@guild, @team), notice: "Team updated."
@@ -81,6 +93,17 @@ class TeamsController < ApplicationController
   def load_roster_options
     @team_categories = TeamCategory.ordered.to_a
     @team_types = TeamType.ordered.to_a
+  end
+
+  # [resolved, error_message] — :name: is expanded against the guild's emoji
+  # list (bots must post the full <:name:id> form; the shorthand only renders
+  # when a human types it); unicode and full mentions pass through.
+  def resolve_emote(raw)
+    [ Discord::EmoteResolver.call(guild_id: @guild.id, input: raw), nil ]
+  rescue Discord::EmoteResolver::UnknownEmote => e
+    [ nil, "This server has no emote named :#{e.name}: — check the name, or paste the full <:name:id> form." ]
+  rescue Discord::BotApi::Error
+    [ nil, "Couldn't look up this server's emotes right now — try again in a moment." ]
   end
 
   # Role/channel pickers come from Discord over REST (bot token), cached

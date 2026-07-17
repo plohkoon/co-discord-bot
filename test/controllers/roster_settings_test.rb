@@ -99,6 +99,30 @@ class RosterSettingsTest < ActionDispatch::IntegrationTest
     assert_equal @category.id, @team.team_category_id
   end
 
+  test "an emote shortcode is resolved against the server's emoji list" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    stub_singleton_method(Discord::EmoteResolver, :call, "<:swordguy:9001>") do
+      patch guild_team_path(@guild, @team), params: { team: { name: "Alpha", emote: ":swordguy:" } }
+    end
+
+    assert_redirected_to guild_team_path(@guild, @team)
+    assert_equal "<:swordguy:9001>", @team.reload.emote
+  end
+
+  test "an unknown emote shortcode is rejected without saving" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    raise_unknown = ->(**) { raise Discord::EmoteResolver::UnknownEmote, "nope" }
+    stub_singleton_method(Discord::EmoteResolver, :call, raise_unknown) do
+      patch guild_team_path(@guild, @team), params: { team: { name: "Renamed", emote: ":nope:" } }
+    end
+
+    assert_redirected_to guild_team_path(@guild, @team)
+    assert_match(/no emote named :nope:/, flash[:alert])
+    assert_equal "Alpha", @team.reload.name # nothing was saved
+  end
+
   test "category and type ids from another guild are cleared, not assigned" do
     other_guild = Guild.create!(id: 666_000_111_222_333_444, name: "Other")
     other_category, other_type = ActsAsTenant.with_tenant(other_guild) do

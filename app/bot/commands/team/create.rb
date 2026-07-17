@@ -10,7 +10,7 @@ module Commands
       channel :review_channel, "Channel where applications are posted", required: true, channel_types: [ :text ]
       string  :category, "Roster section header — pick an existing category", autocomplete: true
       string  :team_type, "Team type — pick from this server's list", autocomplete: true
-      string  :emote, "Emoji shown before the team name in the roster (unicode or custom)"
+      string  :emote, "Emoji shown before the team name in the roster (unicode or :name: from this server)"
       string  :progression, "Roster line (e.g. Currently 7/9 H)"
       string  :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string  :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
@@ -33,8 +33,9 @@ module Commands
           team_category: category,
           team_type: team_type,
           position: option(:position).to_i,
-          **::Team::ROSTER_FIELDS.index_with { |field| option(field).to_s.strip.presence }
+          **(::Team::ROSTER_FIELDS - [ :emote ]).index_with { |field| option(field).to_s.strip.presence }
         )
+        return unless resolve_emote_onto(team)
 
         if team.save
           team.seed_default_questions!
