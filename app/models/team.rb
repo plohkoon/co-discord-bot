@@ -1,9 +1,14 @@
 class Team < ApplicationRecord
   include GuildScoped
 
+  belongs_to :team_category, optional: true
   has_many :application_questions, -> { order(:position) }, dependent: :destroy
   has_many :team_applications, dependent: :destroy
   has_many :team_memberships, dependent: :destroy
+
+  # Free-form roster lines shown in the /team roster directory (and the web
+  # team page). All optional; rendered verbatim.
+  ROSTER_FIELDS = %i[team_type progression requirements date_and_time current_needs].freeze
 
   validates :name, presence: true, length: { maximum: 100 }
   validates_uniqueness_to_tenant :name, case_sensitive: false

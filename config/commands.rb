@@ -9,6 +9,8 @@ CoBot::CommandRegistry.draw do
     command :create
     command :list
     command :apply
+    command :edit
+    command :roster
 
     command :member, "Manage a team member" do
       command :accept
@@ -21,6 +23,7 @@ CoBot::CommandRegistry.draw do
   # Persistent components (buttons/modals). The custom_id key + params come from
   # each class's `component` declaration.
   component Commands::Components::ApplyModal
+  component Commands::Components::ApplyButton
   component Commands::Components::Decide
   component Commands::Components::AddNote
   component Commands::Components::NoteModal

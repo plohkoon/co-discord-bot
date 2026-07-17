@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_235222) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_000318) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -87,6 +87,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_235222) do
     t.index ["team_membership_id"], name: "index_team_applications_on_team_membership_id"
   end
 
+  create_table "team_categories", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "guild_id", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["guild_id", "name"], name: "index_team_categories_on_guild_id_and_name", unique: true
+    t.index ["guild_id"], name: "index_team_categories_on_guild_id"
+  end
+
   create_table "team_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "discord_user_id", null: false
@@ -106,15 +116,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_235222) do
   create_table "teams", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
+    t.text "current_needs"
+    t.text "date_and_time"
     t.text "description"
     t.bigint "guild_id", null: false
     t.string "name", null: false
     t.bigint "officer_role_id", null: false
+    t.text "progression"
+    t.text "requirements"
     t.bigint "review_channel_id", null: false
+    t.bigint "roster_channel_id"
+    t.bigint "roster_message_id"
+    t.integer "team_category_id"
     t.bigint "team_role_id", null: false
+    t.text "team_type"
     t.datetime "updated_at", null: false
     t.index ["guild_id", "name"], name: "index_teams_on_guild_id_and_name", unique: true
     t.index ["guild_id"], name: "index_teams_on_guild_id"
+    t.index ["team_category_id"], name: "index_teams_on_team_category_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -137,7 +156,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_235222) do
   add_foreign_key "team_applications", "guilds"
   add_foreign_key "team_applications", "team_memberships"
   add_foreign_key "team_applications", "teams"
+  add_foreign_key "team_categories", "guilds"
   add_foreign_key "team_memberships", "guilds"
   add_foreign_key "team_memberships", "teams"
   add_foreign_key "teams", "guilds"
+  add_foreign_key "teams", "team_categories"
 end

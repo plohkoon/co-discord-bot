@@ -15,7 +15,7 @@ Rails.application.routes.draw do
   # --- Dashboard (per-guild, tenant-scoped) ---
   resources :guilds, only: :show do
     post :recheck, on: :member
-    resources :teams, only: :show do
+    resources :teams, only: %i[show update] do
       resources :questions, only: %i[create update destroy], controller: "team_questions"
       resources :memberships, only: :show do
         resources :notes, only: %i[create destroy], controller: "membership_notes"

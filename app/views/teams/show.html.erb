@@ -8,6 +8,46 @@
   <%= render Ui::StatTileComponent.new(value: @counts["archived"], label: "Archived") %>
 </div>
 
+<%= render Ui::SectionComponent.new(title: "Roster details", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Shown in the server's team directory (<code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team roster</code>).
+    Team leads are read live from the officer role, so they aren't edited here.
+  </p>
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Category (directory header)</span>
+        <%= f.text_field :category_name, value: @team.team_category&.name,
+              placeholder: "e.g. PvE Teams ⚔️", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Team type</span>
+        <%= f.text_field :team_type, placeholder: "e.g. Heroic Team", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Progression</span>
+        <%= f.text_field :progression, placeholder: "e.g. Currently 7/9 H", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Requirements</span>
+        <%= f.text_field :requirements, placeholder: "e.g. Req. iLvl - 250+", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Date and time</span>
+        <%= f.text_field :date_and_time, placeholder: "e.g. Tuesdays 7-10pm CT", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Current needs</span>
+        <%= f.text_field :current_needs, placeholder: "e.g. DPS (esp. Warlock)", class: "field w-full mt-1" %>
+      </label>
+    </div>
+    <div class="flex justify-end">
+      <%= f.submit "Save roster details", class: Ui::ButtonComponent.classes(variant: :gold) %>
+    </div>
+  <% end %>
+<% end %>
+
 <%= render Ui::SectionComponent.new(title: "Members", classes: "mb-12") do %>
   <% ordered = @members_by_status.values_at("pending", "active", "archived").compact.flatten %>
   <% if ordered.empty? %>
