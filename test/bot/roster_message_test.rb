@@ -35,7 +35,7 @@ class RosterMessageTest < ActiveSupport::TestCase
     block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
 
     assert_equal <<~BLOCK.strip, block
-      <@&100>
+      ### <@&100>
       *Heroic Team* | Currently 7/9 H | Req. iLvl - 250+
       __Team Leads:__ <@11> | <@12>
       __Date and Time:__ Tuesdays 7-10pm CT
@@ -48,7 +48,7 @@ class RosterMessageTest < ActiveSupport::TestCase
     block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
 
     assert_equal <<~BLOCK.strip, block
-      <@&100>
+      ### <@&100>
       __Team Leads:__ —
       __Date and Time:__ —
       __Current Needs:__ —

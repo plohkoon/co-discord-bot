@@ -91,7 +91,9 @@ module CoBot
 
     def team_block(team)
       lead_ids = team.team_officers.ordered.pluck(:discord_user_id)
-      lines = [ "<@&#{team.team_role_id}>" ]
+      # Heading-sized: container contents render in Discord's compact card
+      # style, so the team name line gets bumped back up for prominence.
+      lines = [ "### <@&#{team.team_role_id}>" ]
       summary = [
         team.team_type.presence && "*#{team.team_type}*",
         team.progression.presence,
