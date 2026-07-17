@@ -46,6 +46,31 @@ module Memberships
       assert_no_enqueued_jobs(only: RosterRefreshJob)
     end
 
+    test "an unrelated role change never touches a live application" do
+      membership, application = ActsAsTenant.with_tenant(guild) do
+        m = TeamMembership.create!(team: team, discord_user_id: 11, discord_username: "alice", status: :pending)
+        [ m, m.team_applications.create!(team: team, discord_user_id: 11, discord_username: "alice") ]
+      end
+
+      reconcile([ 999 ]) # some role, not the team's
+
+      assert membership.reload.pending?
+      assert application.reload.pending?
+    end
+
+    test "losing the team role archives the membership and resolves its dangling pending application" do
+      reconcile([ team.team_role_id ]) # manual grant -> active
+      membership = ActsAsTenant.with_tenant(guild) { TeamMembership.find_by!(discord_user_id: 11) }
+      application = ActsAsTenant.with_tenant(guild) do
+        membership.team_applications.create!(team: team, discord_user_id: 11, discord_username: "alice")
+      end
+
+      reconcile([])
+
+      assert membership.reload.archived?
+      assert application.reload.rejected?
+    end
+
     test "leaving the server clears officer rows and refreshes the roster" do
       ActsAsTenant.with_tenant(guild) { team.update!(roster_channel_id: 1, roster_message_id: 2) }
       reconcile([ OFFICER_ROLE ])

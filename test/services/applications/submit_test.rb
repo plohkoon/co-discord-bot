@@ -59,6 +59,18 @@ module Applications
       end
     end
 
+    test "re-applying after the role was pulled (archive) opens a fresh pending application" do
+      first = submit
+      ActsAsTenant.with_tenant(guild) do
+        Memberships::Archive.call(first.team_membership)
+      end
+      assert first.reload.rejected? # archive resolved it — nothing left to block the re-apply
+
+      second = submit
+      assert second.pending?
+      assert_not_equal first.id, second.id
+    end
+
     test "an active member cannot apply" do
       first = submit
       ActsAsTenant.with_tenant(guild) do
