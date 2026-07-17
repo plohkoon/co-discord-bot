@@ -1,5 +1,10 @@
 name: CI
 
+# The workflow token never needs write access; keeps an approved fork-PR run
+# from doing anything but reading the checkout.
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:
