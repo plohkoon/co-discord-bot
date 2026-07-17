@@ -91,7 +91,7 @@
   <% end %>
 <% end %>
 
-<% if can_manage? %>
+<% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Application questions", meta: "(#{@questions.size}/#{ApplicationQuestion::MAX_PER_TEAM})") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">Shown to applicants in the <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/apply</code> modal.</p>
 

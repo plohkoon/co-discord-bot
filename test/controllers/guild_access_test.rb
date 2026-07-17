@@ -2,7 +2,7 @@ require "test_helper"
 
 # Web access tiers: members of a server can view it; a team page opens only
 # for Manage Server holders or that team's leads (team_officers mirror);
-# team settings (roster details, questions) stay Manage Server-only.
+# guild-level settings (team create, roster settings) stay Manage Server-only.
 class GuildAccessTest < ActionDispatch::IntegrationTest
   setup do
     @guild = Guild.create!(id: 555_000_111_222_333_444, name: "Raid Server")
@@ -47,16 +47,16 @@ class GuildAccessTest < ActionDispatch::IntegrationTest
 
     get guild_team_path(@guild, @team)
     assert_response :success
-    # Leads get the details form (minus position); questions stay admin-only.
+    # Leads get the details form (minus position) and the questions section.
     assert_select "h2", text: /Team details/
     assert_select "input[name='team[position]']", count: 0
-    assert_select "h2", text: /Application questions/, count: 0
+    assert_select "h2", text: /Application questions/
 
     get guild_team_path(@guild, @other_team)
     assert_redirected_to guild_path(@guild)
   end
 
-  test "team leads can edit their team's details — but not its position, other teams, or questions" do
+  test "team leads can edit their team's details — but not its position or other teams" do
     make_lead!(users(:member))
     sign_in_as users(:member), member: [ @guild ]
 
@@ -70,8 +70,29 @@ class GuildAccessTest < ActionDispatch::IntegrationTest
     patch guild_team_path(@guild, @other_team), params: { team: { name: "Nope" } }
     assert_redirected_to guild_path(@guild)
     assert_equal "Bravo", @other_team.reload.name
+  end
 
-    post guild_team_questions_path(@guild, @team), params: { application_question: { label: "Hi" } }
+  test "team leads can manage their team's questions — but not another team's" do
+    make_lead!(users(:member))
+    sign_in_as users(:member), member: [ @guild ]
+
+    assert_difference -> { ActsAsTenant.without_tenant { ApplicationQuestion.count } } do
+      post guild_team_questions_path(@guild, @team), params: { application_question: { label: "Why us?" } }
+    end
+    assert_redirected_to guild_team_path(@guild, @team)
+
+    assert_no_difference -> { ActsAsTenant.without_tenant { ApplicationQuestion.count } } do
+      post guild_team_questions_path(@guild, @other_team), params: { application_question: { label: "Sneaky" } }
+    end
+    assert_redirected_to guild_path(@guild)
+  end
+
+  test "plain members can't manage questions" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    assert_no_difference -> { ActsAsTenant.without_tenant { ApplicationQuestion.count } } do
+      post guild_team_questions_path(@guild, @team), params: { application_question: { label: "Nope" } }
+    end
     assert_redirected_to guild_path(@guild)
   end
 
