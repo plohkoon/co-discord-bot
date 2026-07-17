@@ -55,6 +55,13 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  # Procfile.dev sets this for the bot + jobs processes so their logs land on
+  # STDOUT and foreman interleaves all processes (matching production, where
+  # everything logs to STDOUT). `rails server` already echoes to the console.
+  if ENV["RAILS_LOG_TO_STDOUT"].present?
+    config.logger = ActiveSupport::TaggedLogging.logger(STDOUT)
+  end
+
   # Run jobs through Solid Queue in development too (bin/dev starts a worker),
   # so background behavior matches production instead of the async in-process adapter.
   config.active_job.queue_adapter = :solid_queue

@@ -27,6 +27,7 @@ module Discord
     end
 
     MANAGE_ROLES = Discord::GuildHealth::MANAGE_ROLES
+    ALL_REQUIRED = Discord::GuildHealth::REQUIRED_PERMISSIONS.values.reduce(:|)
 
     def guild = @guild ||= Guild.sync_from_discord(id: GUILD_ID, name: "Test")
 
@@ -36,7 +37,7 @@ module Discord
       end
     end
 
-    def roles(bot_position: 5, bot_permissions: MANAGE_ROLES, team_role: true)
+    def roles(bot_position: 5, bot_permissions: ALL_REQUIRED, team_role: true)
       list = [
         { "id" => GUILD_ID.to_s, "name" => "@everyone", "position" => 0, "permissions" => "0" },
         { "id" => BOT_ROLE_ID, "name" => "co-bot", "position" => bot_position, "permissions" => bot_permissions.to_s }
@@ -55,10 +56,20 @@ module Discord
       assert_empty health[:problems]
     end
 
-    test "missing Manage Roles is reported" do
+    test "each missing required permission is reported" do
       health = check(FakeApi.new(roles: roles(bot_permissions: 0), member: member))
       assert_equal :issues, health[:status]
-      assert health[:problems].any? { |p| p[:summary].include?("Manage Roles") }
+      %w[Manage\ Roles View\ Channels Send\ Messages Embed\ Links].each do |name|
+        assert health[:problems].any? { |p| p[:summary].include?(name) }, "expected a problem for #{name}"
+      end
+    end
+
+    test "only the missing permission is reported" do
+      partial = ALL_REQUIRED & ~Discord::GuildHealth::REQUIRED_PERMISSIONS.fetch("Send Messages")
+      health = check(FakeApi.new(roles: roles(bot_permissions: partial), member: member))
+      assert_equal :issues, health[:status]
+      assert_equal 1, health[:problems].size
+      assert_includes health[:problems].first[:summary], "Send Messages"
     end
 
     test "administrator satisfies the permission check" do

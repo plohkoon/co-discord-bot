@@ -1,4 +1,4 @@
 web: bin/rails server
 css: bin/rails tailwindcss:watch
-bot: bin/bot
-jobs: bin/jobs
+bot: RAILS_LOG_TO_STDOUT=1 bin/bot
+jobs: RAILS_LOG_TO_STDOUT=1 bin/jobs

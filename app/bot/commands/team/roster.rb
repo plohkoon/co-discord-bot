@@ -18,6 +18,9 @@ module Commands
         # take seconds on large servers.
         respond("📋 Posting the team directory in <##{channel.id}>…")
         CoBot::RosterMessage.post(server: server, channel: channel, teams: teams)
+      rescue Discordrb::Errors::NoPermission
+        follow_up("⚠️ I couldn't post in <##{channel.id}> — I need **Send Messages** and **Embed Links** there. " \
+                  "Grant them to my role (or re-run the invite link) and try `/team roster` again.")
       end
 
       private

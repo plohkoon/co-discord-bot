@@ -14,7 +14,18 @@ module Discord
   # token, network error); callers should stay quiet rather than warn.
   class GuildHealth
     ADMINISTRATOR = 1 << 3
-    MANAGE_ROLES  = 1 << 28
+
+    # Role-level permissions the bot needs (mirrors BOT_INVITE_PERMISSIONS).
+    # Channel-level overwrites can still deny these locally; this catches the
+    # common case of an invite that under-granted.
+    REQUIRED_PERMISSIONS = {
+      "Manage Roles"  => 1 << 28, # grant/revoke team roles
+      "View Channels" => 1 << 10,
+      "Send Messages" => 1 << 11, # review messages, roster, reminders
+      "Embed Links"   => 1 << 14  # review message embeds
+    }.freeze
+    MANAGE_ROLES = REQUIRED_PERMISSIONS.fetch("Manage Roles")
+
     CACHE_TTL = 60.seconds
 
     def self.call(guild:, teams:, api: BotApi.new)
@@ -58,9 +69,13 @@ module Discord
       highest_position = bot_roles.map { |r| r["position"].to_i }.max || 0
 
       problems = []
-      unless permissions.anybits?(MANAGE_ROLES | ADMINISTRATOR)
-        problems << { summary: "co-bot is missing the Manage Roles permission, so it can't assign team roles.",
-                      action: "Grant Manage Roles to the co-bot role in Server Settings → Roles, or re-invite the bot." }
+      unless permissions.anybits?(ADMINISTRATOR)
+        REQUIRED_PERMISSIONS.each do |name, bit|
+          next if permissions.anybits?(bit)
+
+          problems << { summary: "co-bot is missing the #{name} permission.",
+                        action: "Grant #{name} to the co-bot role in Server Settings → Roles, or re-run the invite link to re-authorize." }
+        end
       end
 
       @teams.each do |team|
