@@ -40,7 +40,12 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.0"
+# image_processing 2.0 made its backends soft dependencies — pick vips (the
+# Rails default variant processor; the Dockerfile and CI install libvips).
+# require: false keeps boot from needing libvips — image_processing requires
+# it itself when a variant is actually processed.
+gem "ruby-vips", require: false
 
 # --- co-bot dependencies ---
 # Discord gateway bot library [https://github.com/shardlab/discordrb]
