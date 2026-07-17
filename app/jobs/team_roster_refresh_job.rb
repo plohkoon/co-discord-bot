@@ -1,6 +1,7 @@
-# Repaint one team's block in the posted /team roster directory after the team
-# changed (slash command or web edit). REST-only: leads come from member
-# pagination, the message is edited in place. No-op if no roster was posted.
+# Repaint the roster message containing a team after the team changed (slash
+# command or web edit). Teams can share one Components-V2 message, so the whole
+# message is rebuilt from every team posted in it. REST-only: leads come from
+# one member-pagination pass. No-op if no roster was posted.
 class TeamRosterRefreshJob < ApplicationJob
   queue_as :default
 
@@ -13,31 +14,34 @@ class TeamRosterRefreshJob < ApplicationJob
       team = Team.find_by(id: team_id) or next
       next unless team.roster_channel_id && team.roster_message_id
 
+      teams = Team.where(roster_channel_id: team.roster_channel_id,
+                         roster_message_id: team.roster_message_id)
+                  .includes(:team_category).to_a
+
       api = Discord::BotApi.new
       begin
         api.edit_message(team.roster_channel_id, team.roster_message_id,
-                         "content" => CoBot::RosterMessage.team_block(team, lead_ids(api, team)),
-                         "components" => CoBot::RosterMessage.apply_view(team).to_a,
-                         "allowed_mentions" => { "parse" => [] })
+                         CoBot::RosterMessage.refresh_payload(teams, lead_ids_by_team(api, guild_id, teams)))
       rescue Discord::BotApi::NotFound
         # The roster post was deleted (or the bot lost the channel) — forget it
         # so future edits stop trying.
-        team.update(roster_channel_id: nil, roster_message_id: nil)
+        Team.where(id: teams.map(&:id)).update_all(roster_channel_id: nil, roster_message_id: nil)
       end
     end
   end
 
   private
 
-  def lead_ids(api, team)
-    role_id = team.officer_role_id.to_s
-    ids = []
-    api.each_guild_member(team.guild_id) do |member|
-      next unless Array(member["roles"]).map(&:to_s).include?(role_id)
+  # One pass over the member list, bucketing lead ids by each team's officer role.
+  def lead_ids_by_team(api, guild_id, teams)
+    by_role = teams.to_h { |team| [ team.officer_role_id.to_s, [] ] }
+    api.each_guild_member(guild_id) do |member|
       next if member.dig("user", "bot")
 
-      ids << member.dig("user", "id")
+      Array(member["roles"]).map(&:to_s).each do |role_id|
+        by_role[role_id] << member.dig("user", "id") if by_role.key?(role_id)
+      end
     end
-    ids
+    teams.to_h { |team| [ team.id, by_role.fetch(team.officer_role_id.to_s, []) ] }
   end
 end
