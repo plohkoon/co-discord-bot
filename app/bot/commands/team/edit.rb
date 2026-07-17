@@ -38,10 +38,10 @@ module Commands
 
         return unless resolve_emote_onto(team)
 
-        team.name = option(:name).to_s.strip if option(:name)
+        team.name = resolve_text(option(:name).to_s.strip) if option(:name)
         team.position = option(:position).to_i unless option(:position).nil?
         (::Team::ROSTER_FIELDS - [ :emote ]).each do |field|
-          team[field] = option(field).to_s.strip if option(field)
+          team[field] = resolve_text(option(field).to_s.strip) if option(field)
         end
 
         if team.save

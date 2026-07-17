@@ -18,10 +18,18 @@ module Commands
         "Manage Server users can edit the #{kind} list in the web dashboard."
       end
 
+      # Inline emote resolution for free-typed text options (names, roster
+      # lines): known :name: shortcodes become mentions so they render in the
+      # roster; unknown ones stay as typed. Never errors.
+      def resolve_text(value)
+        Discord::EmoteResolver.resolve_text(guild_id: current_guild.id, input: value)
+      end
+
       # Normalizes the :emote option (:name: -> <:name:id> via the guild's
-      # emoji list; unicode and full mentions pass through). Responds with the
-      # failure and returns false when it can't be resolved, so callers can
-      # `return unless resolve_emote_onto(team)`.
+      # emoji list; unicode and full mentions pass through). Unlike the inline
+      # fields, this standalone field MUST resolve — a broken heading emote is
+      # worse than an error. Responds with the failure and returns false when
+      # it can't be resolved, so callers can `return unless resolve_emote_onto(team)`.
       def resolve_emote_onto(team)
         return true unless option(:emote)
 

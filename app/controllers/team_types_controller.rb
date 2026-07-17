@@ -34,6 +34,10 @@ class TeamTypesController < ApplicationController
   private
 
   def team_type_params
-    params.require(:team_type).permit(:name, :position)
+    attrs = params.require(:team_type).permit(:name, :position)
+    # Inline emote resolution: known :name: shortcodes render in the roster's
+    # type line; unknown ones stay as typed.
+    attrs[:name] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[:name]) if attrs[:name]
+    attrs
   end
 end

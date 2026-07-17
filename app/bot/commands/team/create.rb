@@ -26,14 +26,14 @@ module Commands
         return respond(unknown_choice_message("team type", option(:team_type))) if option(:team_type).present? && team_type.nil?
 
         team = current_guild.teams.new(
-          name: option(:name).to_s.strip,
+          name: resolve_text(option(:name).to_s.strip),
           team_role_id: option(:role),
           officer_role_id: option(:officer_role),
           review_channel_id: option(:review_channel),
           team_category: category,
           team_type: team_type,
           position: option(:position).to_i,
-          **(::Team::ROSTER_FIELDS - [ :emote ]).index_with { |field| option(field).to_s.strip.presence }
+          **(::Team::ROSTER_FIELDS - [ :emote ]).index_with { |field| resolve_text(option(field).to_s.strip.presence) }
         )
         return unless resolve_emote_onto(team)
 

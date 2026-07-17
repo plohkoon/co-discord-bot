@@ -15,7 +15,7 @@ module Commands
           team_type = TeamType.named(option(:team_type))
           return respond(unknown_choice_message("team type", option(:team_type))) unless team_type
 
-          team_type.name = option(:name).to_s.strip if option(:name)
+          team_type.name = resolve_text(option(:name).to_s.strip) if option(:name)
           team_type.position = option(:position).to_i unless option(:position).nil?
 
           if team_type.save

@@ -34,6 +34,10 @@ class TeamCategoriesController < ApplicationController
   private
 
   def category_params
-    params.require(:team_category).permit(:name, :position)
+    attrs = params.require(:team_category).permit(:name, :position)
+    # Inline emote resolution: known :name: shortcodes render in the roster's
+    # "## Category" header; unknown ones stay as typed.
+    attrs[:name] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[:name]) if attrs[:name]
+    attrs
   end
 end

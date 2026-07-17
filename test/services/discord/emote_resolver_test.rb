@@ -41,4 +41,36 @@ class EmoteResolverTest < ActiveSupport::TestCase
     error = assert_raises(Discord::EmoteResolver::UnknownEmote) { resolve(":nope:") }
     assert_equal "nope", error.name
   end
+
+  # --- resolve_text: the lenient inline form for free-typed fields ---
+
+  def resolve_text(input, emojis: EMOJIS)
+    Discord::EmoteResolver.resolve_text(guild_id: 1, input: input, api: FakeApi.new(emojis))
+  end
+
+  test "resolve_text rewrites known shortcodes inline, case-insensitively" do
+    assert_equal "Raid <:swordguy:9001> night <a:partyblob:9002>!",
+                 resolve_text("Raid :SwordGuy: night :partyblob:!")
+  end
+
+  test "resolve_text leaves unknown shortcodes and plain colons as typed" do
+    assert_equal "Doors :nope: at 7:30:00 — Req: iLvl", resolve_text("Doors :nope: at 7:30:00 — Req: iLvl")
+  end
+
+  test "resolve_text never re-resolves an existing mention" do
+    assert_equal "a <:swordguy:1234> b", resolve_text("a <:swordguy:1234> b")
+  end
+
+  test "resolve_text skips the API when there's nothing to resolve" do
+    api = Object.new # would raise NoMethodError if the API were called
+    assert_equal "Tuesdays 7-10pm CT", Discord::EmoteResolver.resolve_text(guild_id: 1, input: "Tuesdays 7-10pm CT", api: api)
+    assert_nil Discord::EmoteResolver.resolve_text(guild_id: 1, input: nil, api: api)
+  end
+
+  test "resolve_text returns the text unchanged when the API fails" do
+    failing = Object.new
+    def failing.guild_emojis(_guild_id) = raise(Discord::BotApi::Error, "down")
+
+    assert_equal "hi :swordguy:", Discord::EmoteResolver.resolve_text(guild_id: 1, input: "hi :swordguy:", api: failing)
+  end
 end

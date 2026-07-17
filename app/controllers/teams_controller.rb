@@ -13,6 +13,7 @@ class TeamsController < ApplicationController
   def create
     attrs = params.require(:team).permit(:name, :team_role_id, :officer_role_id, :review_channel_id,
                                          :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+    resolve_text_fields(attrs)
     @team = @guild.teams.new(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
 
@@ -62,6 +63,7 @@ class TeamsController < ApplicationController
   def update
     @team = @guild.teams.find(params[:id])
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+    resolve_text_fields(attrs)
 
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
@@ -95,9 +97,20 @@ class TeamsController < ApplicationController
     @team_types = TeamType.ordered.to_a
   end
 
+  # Inline emote resolution for the free-typed fields: known :name: shortcodes
+  # become mentions so they render in the roster; unknown ones stay as typed.
+  # The standalone emote field is stricter — see resolve_emote below.
+  def resolve_text_fields(attrs)
+    ([ :name ] + (Team::ROSTER_FIELDS - [ :emote ])).each do |field|
+      attrs[field] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[field]) if attrs[field]
+    end
+  end
+
   # [resolved, error_message] — :name: is expanded against the guild's emoji
   # list (bots must post the full <:name:id> form; the shorthand only renders
-  # when a human types it); unicode and full mentions pass through.
+  # when a human types it); unicode and full mentions pass through. Unlike the
+  # inline fields, this standalone field MUST resolve — a broken heading emote
+  # is worse than an error.
   def resolve_emote(raw)
     [ Discord::EmoteResolver.call(guild_id: @guild.id, input: raw), nil ]
   rescue Discord::EmoteResolver::UnknownEmote => e

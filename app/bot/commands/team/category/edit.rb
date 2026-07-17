@@ -15,7 +15,7 @@ module Commands
           category = TeamCategory.named(option(:category))
           return respond(unknown_choice_message("category", option(:category))) unless category
 
-          category.name = option(:name).to_s.strip if option(:name)
+          category.name = resolve_text(option(:name).to_s.strip) if option(:name)
           category.position = option(:position).to_i unless option(:position).nil?
 
           if category.save

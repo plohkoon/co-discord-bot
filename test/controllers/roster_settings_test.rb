@@ -123,6 +123,23 @@ class RosterSettingsTest < ActionDispatch::IntegrationTest
     assert_equal "Alpha", @team.reload.name # nothing was saved
   end
 
+  test "inline :name: shortcodes resolve in every typed field" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    fake_resolve = ->(guild_id:, input:, **) { input.to_s.gsub(":swordguy:", "<:swordguy:9001>") }
+    stub_singleton_method(Discord::EmoteResolver, :resolve_text, fake_resolve) do
+      patch guild_team_path(@guild, @team),
+            params: { team: { name: "Alpha :swordguy: Squad", current_needs: "DPS :swordguy: + :unknown:" } }
+      patch guild_team_category_path(@guild, @category), params: { team_category: { name: ":swordguy: PvE", position: 1 } }
+      patch guild_team_type_path(@guild, @team_type), params: { team_type: { name: "Heroic :swordguy:", position: 1 } }
+    end
+
+    assert_equal "Alpha <:swordguy:9001> Squad", @team.reload.name
+    assert_equal "DPS <:swordguy:9001> + :unknown:", @team.current_needs # unknown stays as typed
+    assert_equal "<:swordguy:9001> PvE", @category.reload.name
+    assert_equal "Heroic <:swordguy:9001>", @team_type.reload.name
+  end
+
   test "category and type ids from another guild are cleared, not assigned" do
     other_guild = Guild.create!(id: 666_000_111_222_333_444, name: "Other")
     other_category, other_type = ActsAsTenant.with_tenant(other_guild) do
