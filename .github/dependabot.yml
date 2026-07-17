@@ -1,12 +1,37 @@
 version: 2
+# Supply-chain hardening: `cooldown` makes Dependabot ignore any release for
+# `default-days` after it is published, so we never adopt a version until it has
+# been public for over a week. This sidesteps the recent wave of malicious
+# releases that are typically caught and yanked within a few days of publish.
+# Dependabot is the enforcement point — Bundler has no native minimum-release-age
+# setting, and all updates flow through here.
+#
+# Minor + patch updates land as one grouped weekly PR; majors get individual PRs
+# (anything not captured by a group falls out separately by default).
 updates:
-- package-ecosystem: bundler
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
+  - package-ecosystem: bundler
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
