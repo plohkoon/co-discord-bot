@@ -13,6 +13,7 @@ module CoBot
     TEXT_DISPLAY = 10
     SECTION      = 9
     SEPARATOR    = 14
+    CONTAINER    = 17
     BUTTON       = 2
 
     # Discord caps a message at 40 components (nested ones count) and 4000
@@ -24,8 +25,9 @@ module CoBot
 
     # Post the directory, splitting into further messages only when a budget
     # overflows. Records each team's message so edits can repaint it.
-    def post(api:, channel_id:, teams:, lead_ids_by_team:)
-      payloads(teams, lead_ids_by_team).each do |payload, included_teams|
+    def post(api:, channel_id:, teams:)
+      colors = role_colors(api, teams)
+      payloads(teams, colors).each do |payload, included_teams|
         message = api.create_message(channel_id, payload)
         included_teams.each do |team|
           team.update(roster_channel_id: channel_id, roster_message_id: message["id"])
@@ -34,25 +36,38 @@ module CoBot
     end
 
     # One unchunked payload for repainting an existing message in place.
-    def refresh_payload(teams, lead_ids_by_team)
+    def refresh_payload(teams, colors = {})
       components = []
       grouped(teams).each do |category, group|
         components << separator if category && components.any?
         components << header(category) if category
-        group.each { |team| components << team_section(team, lead_ids_by_team.fetch(team.id, [])) }
+        group.each { |team| components << team_container(team, colors) }
       end
       payload_for(components)
     end
 
+    # The teams' role colors ({role id (string) => integer}) — the accent
+    # border of each team's container. One REST call; failures mean plain
+    # borders, never a failed roster.
+    def role_colors(api, teams)
+      guild_id = teams.first&.guild_id
+      return {} unless guild_id
+
+      api.guild_roles(guild_id).to_h { |role| [ role["id"].to_s, role["color"].to_i ] }
+    rescue Discord::BotApi::Error => e
+      Rails.logger.warn("[roster] fetching role colors failed for guild #{guild_id}: #{e.class}: #{e.message}")
+      {}
+    end
+
     # [[payload, [team, ...]], ...] respecting the component/char budgets.
-    def payloads(teams, lead_ids_by_team)
+    def payloads(teams, colors = {})
       messages = []
       current = { components: [], chars: 0, teams: [] }
 
       grouped(teams).each do |category, group|
         header_pending = category
         group.each do |team|
-          section = team_section(team, lead_ids_by_team.fetch(team.id, []))
+          section = team_container(team, colors)
           addition = []
           if header_pending
             addition << separator if current[:components].any?
@@ -77,14 +92,16 @@ module CoBot
       messages.map { |m| [ payload_for(m[:components]), m[:teams] ] }
     end
 
-    # Categories in position order; uncategorized teams last, headerless.
+    # Categories in position order; teams by position (then name) within one;
+    # uncategorized teams last, headerless.
     def grouped(teams)
       teams.group_by(&:team_category)
            .sort_by { |category, _| category ? [ 0, category.position, category.id ] : [ 1, 0, 0 ] }
-           .map { |category, group| [ category, group.sort_by { |t| t.name.downcase } ] }
+           .map { |category, group| [ category, group.sort_by { |t| [ t.position, t.name.downcase ] } ] }
     end
 
-    def team_block(team, lead_ids)
+    def team_block(team)
+      lead_ids = team.team_officers.ordered.pluck(:discord_user_id)
       lines = [ "<@&#{team.team_role_id}>" ]
       summary = [
         team.team_type.presence && "*#{team.team_type}*",
@@ -98,17 +115,21 @@ module CoBot
       lines.join("\n")
     end
 
-    # Leads = current holders of the team's officer role, read live from the
-    # gateway cache so the roster can never drift from reality.
-    def gateway_lead_ids(team, server)
-      role = server.role(team.officer_role_id)
-      (role ? role.members.reject(&:bot_account?) : []).map(&:id)
+    # Each team lives in a container whose accent color (the left border) is
+    # its team role's color — 0 (Discord's "no color") renders borderless.
+    def team_container(team, colors)
+      color = colors[team.team_role_id.to_s].to_i
+      {
+        "type" => CONTAINER,
+        "accent_color" => (color if color.positive?),
+        "components" => [ team_section(team) ]
+      }
     end
 
-    def team_section(team, lead_ids)
+    def team_section(team)
       {
         "type" => SECTION,
-        "components" => [ { "type" => TEXT_DISPLAY, "content" => team_block(team, lead_ids) } ],
+        "components" => [ { "type" => TEXT_DISPLAY, "content" => team_block(team) } ],
         "accessory" => {
           "type" => BUTTON, "style" => 1, "label" => "Apply",
           "custom_id" => CoBot::CommandRegistry.custom_id("applyto", team.id)
@@ -127,14 +148,26 @@ module CoBot
       }
     end
 
-    # A section counts as 3 components (itself + text child + button accessory).
-    def component_cost(list) = list.sum { |c| c["type"] == SECTION ? 3 : 1 }
+    # Nested components count toward Discord's 40-component cap: a section is
+    # 3 (itself + text child + button accessory), a container adds 1 around
+    # whatever it holds.
+    def component_cost(list)
+      list.sum do |c|
+        case c["type"]
+        when CONTAINER then 1 + component_cost(c["components"])
+        when SECTION   then 3
+        else 1
+        end
+      end
+    end
 
     def char_cost(list)
       list.sum do |c|
-        next c["content"].size if c["type"] == TEXT_DISPLAY
-
-        Array(c["components"]).sum { |child| child["content"].to_s.size }
+        case c["type"]
+        when TEXT_DISPLAY then c["content"].size
+        when CONTAINER    then char_cost(c["components"])
+        else Array(c["components"]).sum { |child| child["content"].to_s.size }
+        end
       end
     end
 

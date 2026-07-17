@@ -25,6 +25,8 @@ module Discord
 
     def guild_roles(guild_id) = get("/guilds/#{guild_id}/roles")
 
+    def guild_channels(guild_id) = get("/guilds/#{guild_id}/channels")
+
     def guild_member(guild_id, user_id) = get("/guilds/#{guild_id}/members/#{user_id}")
 
     # Page through the guild's full member list — the REST equivalent of

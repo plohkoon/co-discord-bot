@@ -5,6 +5,7 @@ class Team < ApplicationRecord
   has_many :application_questions, -> { order(:position) }, dependent: :destroy
   has_many :team_applications, dependent: :destroy
   has_many :team_memberships, dependent: :destroy
+  has_many :team_officers, dependent: :delete_all
 
   # Free-form roster lines shown in the /team roster directory (and the web
   # team page). All optional; rendered verbatim.

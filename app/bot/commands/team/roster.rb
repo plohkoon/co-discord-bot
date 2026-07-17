@@ -9,19 +9,15 @@ module Commands
       admin_only!
 
       def call
-        teams = current_guild.teams.active.includes(:team_category).to_a
+        teams = current_guild.teams.active.includes(:team_category, :team_officers).to_a
         return respond("No active teams to list yet — `/team create` one first.") if teams.empty?
 
         channel_id = option(:channel) || event.channel&.id
         return respond("I can't find that channel.") unless channel_id
 
-        # Ack first: listing role holders chunks the member list, which can
-        # take seconds on large servers.
+        # Leads come from the local team_officers mirror — no member chunking.
         respond("📋 Posting the team directory in <##{channel_id}>…")
-
-        lead_ids = teams.to_h { |team| [ team.id, CoBot::RosterMessage.gateway_lead_ids(team, server) ] }
-        CoBot::RosterMessage.post(api: Discord::BotApi.new, channel_id: channel_id,
-                                  teams: teams, lead_ids_by_team: lead_ids)
+        CoBot::RosterMessage.post(api: Discord::BotApi.new, channel_id: channel_id, teams: teams)
       rescue Discord::BotApi::Error
         follow_up("⚠️ I couldn't post in <##{channel_id}> — I need **Send Messages** there. " \
                   "Grant it to my role (or re-run the invite link) and try `/team roster` again.")

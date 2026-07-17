@@ -4,13 +4,14 @@ class RosterMessageTest < ActiveSupport::TestCase
   SECTION = CoBot::RosterMessage::SECTION
   TEXT_DISPLAY = CoBot::RosterMessage::TEXT_DISPLAY
   SEPARATOR = CoBot::RosterMessage::SEPARATOR
+  CONTAINER = CoBot::RosterMessage::CONTAINER
 
   def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
 
-  def create_team(name, category: nil, **fields)
+  def create_team(name, category: nil, position: 0, **fields)
     ActsAsTenant.with_tenant(guild) do
       Team.create!(name: name, team_role_id: 100, officer_role_id: 200, review_channel_id: 300,
-                   team_category: category, **fields)
+                   team_category: category, position: position, **fields)
     end
   end
 
@@ -18,12 +19,20 @@ class RosterMessageTest < ActiveSupport::TestCase
     ActsAsTenant.with_tenant(guild) { TeamCategory.create!(name: name, position: position) }
   end
 
-  test "team_block renders the roster lines with leads and skips blank summary parts" do
+  def add_officer(team, user_id, username)
+    ActsAsTenant.with_tenant(guild) do
+      TeamOfficer.create!(team: team, discord_user_id: user_id, discord_username: username)
+    end
+  end
+
+  test "team_block renders the roster lines with leads from the officers mirror" do
     team = create_team("Raiders", team_type: "Heroic Team", progression: "Currently 7/9 H",
                        requirements: "Req. iLvl - 250+", date_and_time: "Tuesdays 7-10pm CT",
                        current_needs: "DPS")
+    add_officer(team, 11, "alice")
+    add_officer(team, 12, "bob")
 
-    block = CoBot::RosterMessage.team_block(team, [ 11, 12 ])
+    block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
 
     assert_equal <<~BLOCK.strip, block
       <@&100>
@@ -36,7 +45,7 @@ class RosterMessageTest < ActiveSupport::TestCase
 
   test "team_block with no details shows placeholder dashes and no summary line" do
     team = create_team("Bare")
-    block = CoBot::RosterMessage.team_block(team, [])
+    block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
 
     assert_equal <<~BLOCK.strip, block
       <@&100>
@@ -46,30 +55,33 @@ class RosterMessageTest < ActiveSupport::TestCase
     BLOCK
   end
 
-  test "grouped orders categories by position and puts uncategorized teams last" do
+  test "grouped orders categories by position, teams by position then name, uncategorized last" do
     pvp = create_category("PvP Teams", position: 2)
     pve = create_category("PvE Teams", position: 1)
     teams = [
       create_team("Zeta", category: pvp),
-      create_team("Alpha", category: pve),
-      create_team("Beta", category: pve),
+      create_team("Alpha", category: pve, position: 2),
+      create_team("Beta", category: pve, position: 1),
       create_team("Loose")
     ]
 
-    groups = CoBot::RosterMessage.grouped(teams)
+    groups = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.grouped(teams) }
 
     assert_equal [ "PvE Teams", "PvP Teams", nil ], groups.map { |category, _| category&.name }
-    assert_equal %w[Alpha Beta], groups[0].last.map(&:name)
+    assert_equal %w[Beta Alpha], groups[0].last.map(&:name)
     assert_equal %w[Loose], groups[2].last.map(&:name)
   end
 
-  test "payloads builds one components-v2 message with headers, sections, and inline apply buttons" do
+  test "payloads builds one components-v2 message: headers, role-colored containers, inline apply buttons" do
     pve = create_category("PvE Teams ⚔️", position: 1)
     pvp = create_category("PvP Teams", position: 2)
     alpha = create_team("Alpha", category: pve)
     zeta = create_team("Zeta", category: pvp)
+    add_officer(alpha, 11, "alice")
 
-    payloads = CoBot::RosterMessage.payloads([ zeta, alpha ], { alpha.id => [ 11 ], zeta.id => [] })
+    payloads = ActsAsTenant.with_tenant(guild) do
+      CoBot::RosterMessage.payloads([ zeta, alpha ], { "100" => 0xFFD166 })
+    end
 
     assert_equal 1, payloads.size
     payload, included = payloads.first
@@ -78,22 +90,32 @@ class RosterMessageTest < ActiveSupport::TestCase
     assert_equal({ "parse" => [] }, payload["allowed_mentions"])
 
     types = payload["components"].map { |c| c["type"] }
-    assert_equal [ TEXT_DISPLAY, SECTION, SEPARATOR, TEXT_DISPLAY, SECTION ], types
+    assert_equal [ TEXT_DISPLAY, CONTAINER, SEPARATOR, TEXT_DISPLAY, CONTAINER ], types
+    assert_equal "## PvE Teams ⚔️", payload["components"].first["content"]
 
-    header = payload["components"].first
-    assert_equal "## PvE Teams ⚔️", header["content"]
-
-    section = payload["components"][1]
+    container = payload["components"][1]
+    assert_equal 0xFFD166, container["accent_color"]
+    section = container["components"].first
+    assert_equal SECTION, section["type"]
     assert_equal "applyto:#{alpha.id}", section.dig("accessory", "custom_id")
     assert_equal "Apply", section.dig("accessory", "label")
     assert_includes section.dig("components", 0, "content"), "__Team Leads:__ <@11>"
   end
 
+  test "a role without a color renders a borderless container" do
+    team = create_team("Plain")
+    payloads = ActsAsTenant.with_tenant(guild) do
+      CoBot::RosterMessage.payloads([ team ], { "100" => 0 })
+    end
+    container = payloads.first.first["components"].first
+    assert_nil container["accent_color"]
+  end
+
   test "payloads splits into more messages when the component budget overflows" do
     pve = create_category("PvE Teams", position: 1)
-    teams = 16.times.map { |i| create_team("Team #{format('%02d', i)}", category: pve) }
+    teams = 12.times.map { |i| create_team("Team #{format('%02d', i)}", category: pve) }
 
-    payloads = CoBot::RosterMessage.payloads(teams, {})
+    payloads = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads(teams) }
 
     assert_operator payloads.size, :>, 1
     assert_equal teams.map(&:name).sort, payloads.flat_map { |_, included| included.map(&:name) }.sort
@@ -107,12 +129,17 @@ class RosterMessageTest < ActiveSupport::TestCase
   test "refresh_payload rebuilds a single message for the given teams" do
     pve = create_category("PvE Teams", position: 1)
     team = create_team("Alpha", category: pve, current_needs: "Healers")
+    add_officer(team, 42, "carol")
 
-    payload = CoBot::RosterMessage.refresh_payload([ team ], { team.id => [ 42 ] })
+    payload = ActsAsTenant.with_tenant(guild) do
+      CoBot::RosterMessage.refresh_payload([ team ], { "100" => 0xABCDEF })
+    end
 
     assert_equal CoBot::RosterMessage::FLAG_COMPONENTS_V2, payload["flags"]
-    section = payload["components"].find { |c| c["type"] == SECTION }
-    assert_includes section.dig("components", 0, "content"), "__Current Needs:__ Healers"
-    assert_includes section.dig("components", 0, "content"), "<@42>"
+    container = payload["components"].find { |c| c["type"] == CONTAINER }
+    assert_equal 0xABCDEF, container["accent_color"]
+    content = container.dig("components", 0, "components", 0, "content")
+    assert_includes content, "__Current Needs:__ Healers"
+    assert_includes content, "<@42>"
   end
 end

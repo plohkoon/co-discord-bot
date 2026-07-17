@@ -41,6 +41,10 @@
         <span class="text-xs text-muted-foreground">Current needs</span>
         <%= f.text_field :current_needs, placeholder: "e.g. DPS (esp. Warlock)", class: "field w-full mt-1" %>
       </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Position (sort order in the roster, lower first)</span>
+        <%= f.number_field :position, class: "field w-full mt-1" %>
+      </label>
     </div>
     <div class="flex justify-end">
       <%= f.submit "Save roster details", class: Ui::ButtonComponent.classes(variant: :gold) %>

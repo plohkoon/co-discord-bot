@@ -1,0 +1,77 @@
+<% content_for :title, "New team · co-bot" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "New team", back_href: guild_path(@guild.id), back_label: @guild.name) %>
+
+<% if @role_options.empty? || @channel_options.empty? %>
+  <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-6 text-sm text-foreground">
+    Couldn't load this server's roles and channels from Discord — make sure the bot is in the server, then reload.
+  </div>
+<% end %>
+
+<%= form_with model: @team, url: guild_teams_path(@guild.id), scope: :team,
+      class: "rounded-xl border border-border bg-card p-5 space-y-5" do |f| %>
+  <% if @team.errors.any? %>
+    <div class="text-sm text-light-red"><%= @team.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <label class="block sm:col-span-2">
+      <span class="text-xs text-muted-foreground">Team name</span>
+      <%= f.text_field :name, required: true, maxlength: 100, class: "field w-full mt-1" %>
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Team role (granted to members)</span>
+      <%= f.select :team_role_id, options_for_select(@role_options, @team.team_role_id),
+            { include_blank: "Select a role…" }, class: "field w-full mt-1", required: true %>
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Officer role (reviews applications)</span>
+      <%= f.select :officer_role_id, options_for_select(@role_options, @team.officer_role_id),
+            { include_blank: "Select a role…" }, class: "field w-full mt-1", required: true %>
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Review channel (applications are posted here)</span>
+      <%= f.select :review_channel_id, options_for_select(@channel_options, @team.review_channel_id),
+            { include_blank: "Select a channel…" }, class: "field w-full mt-1", required: true %>
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Position (sort order in the roster, lower first)</span>
+      <%= f.number_field :position, class: "field w-full mt-1" %>
+    </label>
+  </div>
+
+  <div class="border-t border-border pt-4">
+    <div class="text-sm font-medium text-foreground mb-3">Roster details <span class="text-xs text-muted-foreground font-normal">(all optional — shown by /team roster)</span></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Category (directory header)</span>
+        <%= f.text_field :category_name, placeholder: "e.g. PvE Teams ⚔️", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Team type</span>
+        <%= f.text_field :team_type, placeholder: "e.g. Heroic Team", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Progression</span>
+        <%= f.text_field :progression, placeholder: "e.g. Currently 7/9 H", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Requirements</span>
+        <%= f.text_field :requirements, placeholder: "e.g. Req. iLvl - 250+", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Date and time</span>
+        <%= f.text_field :date_and_time, placeholder: "e.g. Tuesdays 7-10pm CT", class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Current needs</span>
+        <%= f.text_field :current_needs, placeholder: "e.g. DPS (esp. Warlock)", class: "field w-full mt-1" %>
+      </label>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2">
+    <%= link_to "Cancel", guild_path(@guild.id), class: Ui::ButtonComponent.classes(variant: :ghost) %>
+    <%= f.submit "Create team", class: Ui::ButtonComponent.classes(variant: :gold) %>
+  </div>
+<% end %>

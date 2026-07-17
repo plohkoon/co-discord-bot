@@ -5,9 +5,13 @@
 <%= render "health_banner", health: @health %>
 
 <%= render Ui::SectionComponent.new(title: "Teams") do %>
+  <div class="flex justify-end -mt-2 mb-3">
+    <%= link_to "New team", new_guild_team_path(@guild.id), class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+  </div>
   <% if @teams.empty? %>
     <%= render Ui::EmptyStateComponent.new do %>
-      No teams yet. Create one in Discord with <code class="text-foreground bg-secondary px-1.5 py-0.5 rounded">/team create</code>.
+      No teams yet. Create one here with <span class="text-foreground">New team</span>
+      or in Discord with <code class="text-foreground bg-secondary px-1.5 py-0.5 rounded">/team create</code>.
     <% end %>
   <% else %>
     <div class="space-y-2">

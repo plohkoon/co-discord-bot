@@ -18,7 +18,27 @@ module Memberships
           else
             Archive.for(team: team, discord_user_id: member.id)
           end
+
+          if sync_officer(team, member.id, username, officer: role_ids.include?(team.officer_role_id)) &&
+             team.roster_message_id
+            # The leads line changed — repaint the posted roster block.
+            TeamRosterRefreshJob.perform_later(guild_id: guild.id, team_id: team.id)
+          end
         end
+      end
+    end
+
+    # Keep the local officers mirror in step with the officer role. Returns
+    # true when the mirror actually changed.
+    def self.sync_officer(team, user_id, username, officer:)
+      if officer
+        record = TeamOfficer.find_or_initialize_by(team_id: team.id, discord_user_id: user_id)
+        record.discord_username = username.to_s if username.present?
+        changed = record.new_record? || record.changed?
+        record.save! if changed
+        changed
+      else
+        TeamOfficer.where(team_id: team.id, discord_user_id: user_id).delete_all.positive?
       end
     end
 
@@ -32,6 +52,12 @@ module Memberships
       ActsAsTenant.with_tenant(guild) do
         TeamMembership.where(discord_user_id: user_id).where.not(status: :archived).find_each do |membership|
           Archive.call(membership)
+        end
+
+        departed_team_ids = TeamOfficer.where(discord_user_id: user_id).pluck(:team_id)
+        TeamOfficer.where(discord_user_id: user_id).delete_all
+        Team.where(id: departed_team_ids).where.not(roster_message_id: nil).pluck(:id).each do |team_id|
+          TeamRosterRefreshJob.perform_later(guild_id: guild.id, team_id: team_id)
         end
       end
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_000318) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_004156) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -113,6 +113,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_000318) do
     t.index ["team_id"], name: "index_team_memberships_on_team_id"
   end
 
+  create_table "team_officers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "discord_user_id", null: false
+    t.string "discord_username", default: "", null: false
+    t.bigint "guild_id", null: false
+    t.integer "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["guild_id"], name: "index_team_officers_on_guild_id"
+    t.index ["team_id", "discord_user_id"], name: "index_team_officers_on_team_id_and_discord_user_id", unique: true
+  end
+
   create_table "teams", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
@@ -122,6 +133,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_000318) do
     t.bigint "guild_id", null: false
     t.string "name", null: false
     t.bigint "officer_role_id", null: false
+    t.integer "position", default: 0, null: false
     t.text "progression"
     t.text "requirements"
     t.bigint "review_channel_id", null: false
@@ -159,6 +171,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_000318) do
   add_foreign_key "team_categories", "guilds"
   add_foreign_key "team_memberships", "guilds"
   add_foreign_key "team_memberships", "teams"
+  add_foreign_key "team_officers", "guilds"
+  add_foreign_key "team_officers", "teams"
   add_foreign_key "teams", "guilds"
   add_foreign_key "teams", "team_categories"
 end

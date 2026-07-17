@@ -12,6 +12,7 @@ module Commands
       string  :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string  :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
       string  :current_needs, "What the team is looking for (e.g. DPS)"
+      integer :position, "Sort order within the category (lower first)"
       admin_only!
 
       def call
@@ -21,6 +22,7 @@ module Commands
           officer_role_id: option(:officer_role),
           review_channel_id: option(:review_channel),
           team_category: TeamCategory.locate(option(:category)),
+          position: option(:position).to_i,
           **::Team::ROSTER_FIELDS.index_with { |field| option(field).to_s.strip.presence }
         )
 

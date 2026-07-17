@@ -11,6 +11,7 @@ module Commands
       string :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
       string :current_needs, "What the team is looking for (e.g. DPS)"
+      integer :position, "Sort order within the category (lower first)"
       officer_only!
 
       def call
@@ -18,6 +19,7 @@ module Commands
         return respond("Pick a team from the list.") unless team
 
         team.team_category = TeamCategory.locate(option(:category)) if option(:category)
+        team.position = option(:position).to_i unless option(:position).nil?
         ::Team::ROSTER_FIELDS.each do |field|
           team[field] = option(field).to_s.strip if option(field)
         end

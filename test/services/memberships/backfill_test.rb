@@ -62,5 +62,20 @@ module Memberships
       assert_equal 0, backfill([ rest_member(11, "alice", roles: [ 999 ]) ])
       assert_equal 0, backfill([])
     end
+
+    test "seeds and prunes the officers mirror from the officer role" do
+      officer_role = team.officer_role_id
+      backfill([ rest_member(21, "olive", roles: [ officer_role ]),
+                 rest_member(22, "omar",  roles: [ officer_role ]) ])
+
+      ActsAsTenant.with_tenant(guild) do
+        assert_equal [ 21, 22 ], TeamOfficer.where(team_id: team.id).order(:discord_user_id).pluck(:discord_user_id)
+      end
+
+      backfill([ rest_member(21, "olive", roles: [ officer_role ]) ]) # omar lost the role offline
+      ActsAsTenant.with_tenant(guild) do
+        assert_equal [ 21 ], TeamOfficer.where(team_id: team.id).pluck(:discord_user_id)
+      end
+    end
   end
 end
