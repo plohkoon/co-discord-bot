@@ -15,7 +15,7 @@ module Commands
       string :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
       string :current_needs, "What the team is looking for (e.g. DPS)"
-      integer :position, "Sort order within the category (lower first)"
+      integer :position, "Sort order within the category (lower first; Manage Server only)"
       officer_only!
 
       def call
@@ -39,7 +39,13 @@ module Commands
         return unless resolve_emote_onto(team)
 
         team.name = resolve_text(option(:name).to_s.strip) if option(:name)
-        team.position = option(:position).to_i unless option(:position).nil?
+        # Position is directory placement relative to OTHER teams — a server
+        # layout call, not a team detail, so leads don't get it.
+        unless option(:position).nil?
+          return respond("⛔ Only **Manage Server** users can change a team's position.") unless admin?
+
+          team.position = option(:position).to_i
+        end
         (::Team::ROSTER_FIELDS - [ :emote ]).each do |field|
           team[field] = resolve_text(option(field).to_s.strip) if option(field)
         end

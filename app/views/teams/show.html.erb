@@ -8,7 +8,7 @@
   <%= render Ui::StatTileComponent.new(value: @counts["archived"], label: "Archived") %>
 </div>
 
-<% if can_manage? %>
+<% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Team details", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Shown in the server's team directory (<code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team roster</code>).
@@ -52,10 +52,12 @@
         <span class="text-xs text-muted-foreground">Current needs</span>
         <%= f.text_field :current_needs, placeholder: "e.g. DPS (esp. Warlock)", class: "field w-full mt-1" %>
       </label>
-      <label class="block">
-        <span class="text-xs text-muted-foreground">Position (sort order in the roster, lower first)</span>
-        <%= f.number_field :position, class: "field w-full mt-1" %>
-      </label>
+      <% if can_manage? %>
+        <label class="block">
+          <span class="text-xs text-muted-foreground">Position (sort order in the roster, lower first)</span>
+          <%= f.number_field :position, class: "field w-full mt-1" %>
+        </label>
+      <% end %>
     </div>
     <div class="flex justify-end">
       <%= f.submit "Save roster details", class: Ui::ButtonComponent.classes(variant: :gold) %>

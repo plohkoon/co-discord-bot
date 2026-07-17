@@ -1,8 +1,9 @@
 class TeamsController < ApplicationController
   include GuildScoping
-  # Creating teams and editing roster details are admin work (matches the bot,
-  # where /team create|edit are admin-only). show is open to the team's leads.
-  before_action :require_guild_manager, except: :show
+  # Creating teams is admin work; show and update are open to the team's leads
+  # too (update mirrors the bot's officer-level /team edit — but position is
+  # stripped for non-managers there).
+  before_action :require_guild_manager, except: %i[show update]
 
   def new
     @team = @guild.teams.new
@@ -48,7 +49,7 @@ class TeamsController < ApplicationController
     require_team_access
     return if performed?
 
-    load_roster_options if can_manage?
+    load_roster_options if can_manage? || officer_of?(@team)
     @questions = @team.application_questions.ordered
     @new_question = @team.application_questions.build(required: true)
 
@@ -59,10 +60,17 @@ class TeamsController < ApplicationController
   end
 
   # Name + roster details (category, type + the free-form lines shown by
-  # /team roster).
+  # /team roster). Open to the team's leads, except position — directory
+  # placement relative to OTHER teams is a server-layout call, so it's
+  # Manage Server only (the form hides the field; this also stops hand-
+  # crafted PATCHes).
   def update
     @team = @guild.teams.find(params[:id])
+    require_team_access
+    return if performed?
+
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+    attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
 
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))

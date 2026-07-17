@@ -47,23 +47,40 @@ class GuildAccessTest < ActionDispatch::IntegrationTest
 
     get guild_team_path(@guild, @team)
     assert_response :success
-    # Admin-only sections stay hidden from leads.
-    assert_select "h2", text: /Team details/, count: 0
+    # Leads get the details form (minus position); questions stay admin-only.
+    assert_select "h2", text: /Team details/
+    assert_select "input[name='team[position]']", count: 0
     assert_select "h2", text: /Application questions/, count: 0
 
     get guild_team_path(@guild, @other_team)
     assert_redirected_to guild_path(@guild)
   end
 
-  test "team leads can't edit roster details or questions" do
+  test "team leads can edit their team's details — but not its position, other teams, or questions" do
     make_lead!(users(:member))
     sign_in_as users(:member), member: [ @guild ]
 
-    patch guild_team_path(@guild, @team), params: { team: { position: 5 } }
+    patch guild_team_path(@guild, @team), params: { team: { name: "Alpha Prime", current_needs: "DPS", position: 5 } }
+    assert_redirected_to guild_team_path(@guild, @team)
+    @team.reload
+    assert_equal "Alpha Prime", @team.name
+    assert_equal "DPS", @team.current_needs
+    assert_equal 0, @team.position # position is stripped for non-managers
+
+    patch guild_team_path(@guild, @other_team), params: { team: { name: "Nope" } }
     assert_redirected_to guild_path(@guild)
+    assert_equal "Bravo", @other_team.reload.name
 
     post guild_team_questions_path(@guild, @team), params: { application_question: { label: "Hi" } }
     assert_redirected_to guild_path(@guild)
+  end
+
+  test "plain members still can't edit a team" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    patch guild_team_path(@guild, @team), params: { team: { name: "Nope" } }
+    assert_redirected_to guild_path(@guild)
+    assert_equal "Alpha", @team.reload.name
   end
 
   test "team leads can view memberships and add notes" do
