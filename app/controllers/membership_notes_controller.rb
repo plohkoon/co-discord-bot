@@ -1,6 +1,7 @@
 class MembershipNotesController < ApplicationController
   include GuildScoping
   before_action :set_membership
+  before_action :require_team_access
 
   def create
     note = @membership.membership_notes.build(

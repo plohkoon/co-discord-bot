@@ -51,6 +51,15 @@ module Discord
       assert_not_includes result.installable.map { |g| g["id"] }, "1"
     end
 
+    test "member ids are every known guild the user is in, managed or not" do
+      Guild.sync_from_discord(id: 1, name: "Installed")
+      Guild.sync_from_discord(id: 3, name: "NotManager")
+
+      result = call_with(discord_guilds)
+
+      assert_equal %w[1 3], result.member.sort
+    end
+
     test "entries carry only id, name, and icon" do
       result = call_with(discord_guilds)
       entry = result.installable.find { |g| g["id"] == "2" }

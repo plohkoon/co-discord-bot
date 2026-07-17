@@ -17,6 +17,9 @@ class SessionsController < ApplicationController
     # Store only ids (names come from the Guild table) to keep the session cookie
     # well under CookieStore's 4KB limit — the full array can overflow it.
     session[:guild_ids] = guilds.manageable.map { |g| g["id"] }
+    # Known guilds the user merely belongs to — view access. Small: only ids,
+    # only guilds with a Guild row.
+    session[:member_guild_ids] = guilds.member
     # Installable servers (no Guild row) keep their names on the user row instead.
     user.update!(installable_guilds: guilds.installable)
 

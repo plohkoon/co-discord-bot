@@ -1,7 +1,8 @@
 class TeamsController < ApplicationController
-  # GuildScoping already limits every action here to users who hold Manage
-  # Server on the guild (verified against Discord at login).
   include GuildScoping
+  # Creating teams and editing roster details are admin work (matches the bot,
+  # where /team create|edit are admin-only). show is open to the team's leads.
+  before_action :require_guild_manager, except: :show
 
   def new
     @team = @guild.teams.new
@@ -35,6 +36,9 @@ class TeamsController < ApplicationController
 
   def show
     @team = @guild.teams.find(params[:id])
+    require_team_access
+    return if performed?
+
     @questions = @team.application_questions.ordered
     @new_question = @team.application_questions.build(required: true)
 

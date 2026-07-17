@@ -69,4 +69,33 @@ class ApplicationController < ActionController::Base
   def can_manage_guild?(guild_id)
     manageable_guild_ids.include?(guild_id.to_s)
   end
+
+  # --- View access (membership, not management) ---
+  # Anyone in a server can view it on the web; managing it (or a team in it)
+  # takes Manage Server or a team-lead role. Membership ids are captured at
+  # login; team leads are additionally recognized via the team_officers mirror
+  # so they keep access even if their session predates the officer role.
+
+  def officer_guild_ids
+    return [] unless current_user
+
+    TeamOfficer.where(discord_user_id: current_user.discord_id)
+               .distinct.pluck(:guild_id).map(&:to_s)
+  end
+
+  def viewable_guild_ids
+    manageable_guild_ids | Array(session[:member_guild_ids]).map(&:to_s) | officer_guild_ids
+  end
+
+  def can_view_guild?(guild_id)
+    viewable_guild_ids.include?(guild_id.to_s)
+  end
+
+  # Servers the user can view but not manage — the dashboard's second list.
+  def member_guilds
+    ids = viewable_guild_ids - manageable_guild_ids
+    return Guild.none if ids.empty?
+
+    Guild.installed.where(id: ids).order(:name)
+  end
 end

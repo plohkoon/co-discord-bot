@@ -2,22 +2,28 @@
 
 <%= render Ui::PageHeaderComponent.new(title: @guild.name, back_href: root_path, back_label: "Servers") %>
 
-<%= render "health_banner", health: @health %>
+<%= render "health_banner", health: @health if @health %>
 
 <%= render Ui::SectionComponent.new(title: "Teams") do %>
-  <div class="flex justify-end -mt-2 mb-3">
-    <%= link_to "New team", new_guild_team_path(@guild.id), class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
-  </div>
+  <% if can_manage? %>
+    <div class="flex justify-end -mt-2 mb-3">
+      <%= link_to "New team", new_guild_team_path(@guild.id), class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+    </div>
+  <% end %>
   <% if @teams.empty? %>
     <%= render Ui::EmptyStateComponent.new do %>
-      No teams yet. Create one here with <span class="text-foreground">New team</span>
-      or in Discord with <code class="text-foreground bg-secondary px-1.5 py-0.5 rounded">/team create</code>.
+      <% if can_manage? %>
+        No teams yet. Create one here with <span class="text-foreground">New team</span>
+        or in Discord with <code class="text-foreground bg-secondary px-1.5 py-0.5 rounded">/team create</code>.
+      <% else %>
+        No teams yet.
+      <% end %>
     <% end %>
   <% else %>
     <div class="space-y-2">
       <% @teams.each do |team| %>
-        <%= link_to guild_team_path(@guild, team),
-              class: "flex items-center justify-between rounded-xl border border-border bg-card hover:bg-secondary/40 px-4 py-3 transition" do %>
+        <% openable = can_manage? || @led_team_ids.include?(team.id) %>
+        <% row_body = capture do %>
           <div>
             <div class="font-medium text-foreground"><%= team.name %></div>
             <div class="text-xs text-muted-foreground mt-0.5">
@@ -26,7 +32,15 @@
               <%= pluralize(@question_counts[team.id].to_i, "question") %>
             </div>
           </div>
-          <span class="text-muted-foreground">→</span>
+          <% if openable %><span class="text-muted-foreground">→</span><% end %>
+        <% end %>
+        <% if openable %>
+          <%= link_to row_body, guild_team_path(@guild, team),
+                class: "flex items-center justify-between rounded-xl border border-border bg-card hover:bg-secondary/40 px-4 py-3 transition" %>
+        <% else %>
+          <div class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+            <%= row_body %>
+          </div>
         <% end %>
       <% end %>
     </div>

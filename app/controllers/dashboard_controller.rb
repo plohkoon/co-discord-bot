@@ -1,6 +1,7 @@
 class DashboardController < ApplicationController
   def index
     @guilds = manageable_guilds
+    @member_guilds = member_guilds
     @removed_guilds = removed_guilds
     @installable = installable_guilds
   end

@@ -1,0 +1,10 @@
+<nav class="mb-6 flex items-center gap-5 border-b border-border pb-3 text-sm">
+  <% { "Dashboard" => admin_root_path, "Jobs" => admin_jobs_path }.each do |label, path| %>
+    <% active = (path == admin_root_path) ? request.path == path : request.path.start_with?(path) %>
+    <%= link_to label, path,
+          class: active ? "font-medium text-gold" : "text-muted-foreground hover:text-foreground transition" %>
+  <% end %>
+  <span class="ml-auto">
+    <%= render Ui::BadgeComponent.new(variant: :gold) do %>Admin<% end %>
+  </span>
+</nav>

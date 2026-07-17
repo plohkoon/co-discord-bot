@@ -9,6 +9,10 @@ module Discord
     # Raised when Discord says the bot can't see the guild (404 Unknown Guild,
     # or 403 Missing Access after being kicked).
     NotFound = Class.new(Error)
+    # 403 specifically — a subclass of NotFound so existing "bot was kicked"
+    # handling still catches it, while callers that need to can tell a
+    # permission refusal apart from a genuinely missing resource.
+    Forbidden = Class.new(NotFound)
 
     BASE = "https://discord.com/api/v10"
 
@@ -52,6 +56,16 @@ module Discord
       post("/webhooks/#{application_id}/#{token}", "content" => content, "flags" => ephemeral ? 64 : 0)
     end
 
+    # Grant/pull a role (204 on success). Discord enforces Manage Roles and the
+    # role hierarchy server-side — refusals surface as Forbidden.
+    def add_member_role(guild_id, user_id, role_id, reason: nil)
+      put("/guilds/#{guild_id}/members/#{user_id}/roles/#{role_id}", reason: reason)
+    end
+
+    def remove_member_role(guild_id, user_id, role_id, reason: nil)
+      delete("/guilds/#{guild_id}/members/#{user_id}/roles/#{role_id}", reason: reason)
+    end
+
     def create_message(channel_id, payload) = post("/channels/#{channel_id}/messages", payload)
 
     def edit_message(channel_id, message_id, payload) = patch("/channels/#{channel_id}/messages/#{message_id}", payload)
@@ -72,8 +86,17 @@ module Discord
       write(Net::HTTP::Patch, path, body)
     end
 
-    def delete(path)
-      perform(Net::HTTP::Delete.new(URI("#{BASE}#{path}")), path)
+    def put(path, reason: nil)
+      request = Net::HTTP::Put.new(URI("#{BASE}#{path}"))
+      request["X-Audit-Log-Reason"] = URI.encode_uri_component(reason) if reason
+      request["Content-Length"] = "0"
+      perform(request, path)
+    end
+
+    def delete(path, reason: nil)
+      request = Net::HTTP::Delete.new(URI("#{BASE}#{path}"))
+      request["X-Audit-Log-Reason"] = URI.encode_uri_component(reason) if reason
+      perform(request, path)
     end
 
     def write(verb, path, body)
@@ -91,8 +114,9 @@ module Discord
       end
 
       case response
-      when Net::HTTPSuccess               then response.body.presence && JSON.parse(response.body)
-      when Net::HTTPNotFound, Net::HTTPForbidden then raise NotFound, "#{path} -> HTTP #{response.code}"
+      when Net::HTTPSuccess   then response.body.presence && JSON.parse(response.body)
+      when Net::HTTPForbidden then raise Forbidden, "#{path} -> HTTP #{response.code}"
+      when Net::HTTPNotFound  then raise NotFound, "#{path} -> HTTP #{response.code}"
       else raise Error, "#{path} -> HTTP #{response.code}"
       end
     end

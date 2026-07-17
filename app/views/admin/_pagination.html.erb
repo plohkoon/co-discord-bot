@@ -1,0 +1,16 @@
+<%# locals: (meta:) %>
+<% if meta && meta[:pages] > 1 %>
+  <div class="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+    <span>Page <%= meta[:page] %> of <%= meta[:pages] %> · <%= number_with_delimiter(meta[:count]) %> total</span>
+    <div class="flex gap-2">
+      <% if meta[:prev] %>
+        <%= link_to "← Prev", url_for(request.query_parameters.merge(page: meta[:prev])),
+              class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+      <% end %>
+      <% if meta[:next] %>
+        <%= link_to "Next →", url_for(request.query_parameters.merge(page: meta[:next])),
+              class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

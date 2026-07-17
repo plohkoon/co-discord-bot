@@ -1,0 +1,26 @@
+<% content_for :title, "Jobs · Admin · co-bot" %>
+<%= render "admin/nav" %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: "Background jobs",
+      subtitle: "Solid Queue — reminders, auto-rejects, backfills, roster refreshes.") %>
+
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+  <% @stats.each do |label, value| %>
+    <%= render Ui::StatTileComponent.new(value: number_with_delimiter(value), label: label,
+                                         accent: label == "Failed" && value.positive?) %>
+  <% end %>
+</div>
+
+<div class="mt-6 flex items-center gap-1 border-b border-border text-sm">
+  <% Admin::JobsController::TABS.each do |tab| %>
+    <%= link_to tab.humanize, admin_jobs_path(tab: tab),
+          class: "px-3 py-2 -mb-px border-b-2 transition #{@tab == tab ?
+            'border-gold font-medium text-foreground' :
+            'border-transparent text-muted-foreground hover:text-foreground'}" %>
+  <% end %>
+</div>
+
+<div class="mt-4">
+  <%= render "admin/jobs/#{@tab}" %>
+</div>

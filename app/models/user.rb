@@ -1,4 +1,8 @@
 class User < ApplicationRecord
+  # Discord ids of app-wide admins (the /admin panel and job dashboard).
+  # Deliberately hardcoded: admin cannot be granted through the web app.
+  ADMIN_DISCORD_IDS = %w[99235095214313472].freeze
+
   validates :discord_id, presence: true, uniqueness: true
 
   # Servers where the user has Manage Server but co-bot isn't installed,
@@ -16,6 +20,8 @@ class User < ApplicationRecord
     user.save!
     user
   end
+
+  def admin? = ADMIN_DISCORD_IDS.include?(discord_id.to_s)
 
   def display_name = global_name.presence || username
 

@@ -1,0 +1,40 @@
+<% content_for :title, "Admin · co-bot" %>
+<%= render "admin/nav" %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: "Admin panel",
+      subtitle: "Everything, across all servers.") %>
+
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <% @stats.each do |label, value| %>
+    <%= render Ui::StatTileComponent.new(value: number_with_delimiter(value), label: label) %>
+  <% end %>
+</div>
+
+<%= render Ui::SectionComponent.new(title: "Background jobs", classes: "mt-8") do %>
+  <%= render Ui::CardComponent.new do %>
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <% @job_stats.each do |label, value| %>
+        <span class="<%= label == "Failed" && value.positive? ? "text-light-red" : "text-muted-foreground" %>">
+          <span class="font-semibold <%= label == "Failed" && value.positive? ? "" : "text-foreground" %>"><%= number_with_delimiter(value) %></span>
+          <%= label.downcase %>
+        </span>
+      <% end %>
+      <span class="ml-auto">
+        <%= link_to "View jobs →", admin_jobs_path, class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+      </span>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render Ui::SectionComponent.new(title: "All models", classes: "mt-8") do %>
+  <div class="grid gap-3 sm:grid-cols-3">
+    <% @model_counts.each do |key, klass, count| %>
+      <%= link_to admin_resources_path(key),
+            class: "flex items-center justify-between rounded-xl border border-border bg-card hover:bg-secondary/40 px-4 py-3 transition" do %>
+        <span class="font-medium text-foreground"><%= klass.name %></span>
+        <%= render Ui::BadgeComponent.new do %><%= number_with_delimiter(count) %><% end %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

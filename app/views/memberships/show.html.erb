@@ -10,7 +10,14 @@
     </h1>
     <div class="text-xs text-muted-foreground"><%= @team.name %></div>
   </div>
-  <div class="ml-auto shrink-0"><%= render StatusBadgeComponent.new(status: @membership.status) %></div>
+  <div class="ml-auto shrink-0 flex items-center gap-3">
+    <%= render StatusBadgeComponent.new(status: @membership.status) %>
+    <% unless @membership.archived? %>
+      <%= button_to "Remove from team", remove_guild_team_membership_path(@guild, @team, @membership),
+            form: { data: { turbo_confirm: "Remove #{@membership.discord_username.presence || "this member"} from #{@team.name}? This pulls the team role." } },
+            class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>
+    <% end %>
+  </div>
 </div>
 <p class="text-xs text-muted-foreground mb-8">
   <% if @membership.joined_at %>Joined <%= @membership.joined_at.strftime("%b %-d, %Y") %><% end %>
@@ -26,11 +33,20 @@
         <div class="space-y-4">
           <% @applications.each do |application| %>
             <%= render Ui::CardComponent.new do %>
-              <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center justify-between gap-3 mb-3">
                 <div class="text-xs text-muted-foreground">
                   <%= application.created_at.strftime("%b %-d, %Y at %H:%M") %><% if application.manual? %> · manual role grant<% end %>
                 </div>
-                <%= render StatusBadgeComponent.new(status: application.status) %>
+                <div class="flex items-center gap-2 shrink-0">
+                  <% if application.pending? %>
+                    <%= button_to "Accept", accept_guild_team_membership_application_path(@guild, @team, @membership, application),
+                          class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+                    <%= button_to "Reject", reject_guild_team_membership_application_path(@guild, @team, @membership, application),
+                          form: { data: { turbo_confirm: "Reject this application?" } },
+                          class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>
+                  <% end %>
+                  <%= render StatusBadgeComponent.new(status: application.status) %>
+                </div>
               </div>
               <% if application.application_answers.any? %>
                 <div class="space-y-3">

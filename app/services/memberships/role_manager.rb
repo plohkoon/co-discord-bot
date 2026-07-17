@@ -1,6 +1,4 @@
 module Memberships
-  class RoleError < StandardError; end
-
   # Hierarchy-safe granting/revoking of a team role. Shared by the accept/reject
   # buttons and the /team member commands.
   module RoleManager

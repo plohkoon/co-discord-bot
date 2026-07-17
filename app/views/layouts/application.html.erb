@@ -20,6 +20,9 @@
         <%= link_to "co-bot", root_path, class: "font-semibold tracking-tight text-gold" %>
         <% if logged_in? %>
           <div class="flex items-center gap-3 text-sm">
+            <% if current_user.admin? %>
+              <%= link_to "Admin", admin_root_path, class: "text-muted-foreground hover:text-foreground transition" %>
+            <% end %>
             <% if current_user.avatar_url %>
               <%= image_tag current_user.avatar_url, alt: "", class: "w-7 h-7 rounded-full" %>
             <% else %>

@@ -1,0 +1,32 @@
+<% content_for :title, "#{@klass.name} #{admin_record_label(@record)} · Admin · co-bot" %>
+<%= render "admin/nav" %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: admin_record_label(@record),
+      back_href: admin_resources_path(params[:model]), back_label: @klass.name.pluralize,
+      subtitle: "#{@klass.name} ##{@record.id}") %>
+
+<%= render Ui::CardComponent.new(padding: "p-0") do %>
+  <dl class="divide-y divide-border/50 text-sm">
+    <% @columns.each do |col| %>
+      <div class="flex gap-4 px-4 py-2.5">
+        <dt class="w-48 shrink-0 text-muted-foreground"><%= col.name %></dt>
+        <dd class="min-w-0 break-words text-foreground"><%= admin_format_value(@record.public_send(col.name)) %></dd>
+      </div>
+    <% end %>
+  </dl>
+<% end %>
+
+<% if @associations.any? %>
+  <%= render Ui::SectionComponent.new(title: "Associations", classes: "mt-8") do %>
+    <div class="flex flex-wrap gap-2">
+      <% @associations.each do |assoc| %>
+        <%= link_to admin_resources_path(assoc[:model_key]),
+              class: "inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary/40 px-3 py-1.5 text-sm transition" do %>
+          <span class="text-foreground"><%= assoc[:name].humanize %></span>
+          <%= render Ui::BadgeComponent.new do %><%= assoc[:count] %><% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

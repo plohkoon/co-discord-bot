@@ -1,5 +1,7 @@
 class TeamQuestionsController < ApplicationController
   include GuildScoping
+  # Questions are configured by admins (part of team setup), not team leads.
+  before_action :require_guild_manager
   before_action :set_team
 
   def create

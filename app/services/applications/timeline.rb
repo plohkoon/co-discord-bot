@@ -68,16 +68,8 @@ module Applications
 
     def team = @application.team
 
-    # Repaint the original review message like a button decision would
-    # (decided embed, Accept/Reject buttons dropped).
     def refresh_review_message
-      return unless @application.review_channel_id && @application.review_message_id
-
-      @api.edit_message(@application.review_channel_id, @application.review_message_id,
-                        "embeds" => [ CoBot::ReviewMessage.decided_embed(@application).to_hash ],
-                        "components" => CoBot::ReviewMessage.notes_only_view(@application).to_a)
-    rescue Discord::BotApi::Error => e
-      Rails.logger.warn("[timeline] review message refresh failed for application #{@application.id}: #{e.class}: #{e.message}")
+      RefreshReviewMessage.call(@application, api: @api)
     end
 
     # Post in the review channel, replying to the original review message when

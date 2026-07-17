@@ -1,5 +1,6 @@
 class GuildsController < ApplicationController
   include GuildScoping
+  before_action :require_guild_manager, only: :recheck
 
   def show
     @teams = @guild.teams.order(:name).to_a
@@ -7,7 +8,10 @@ class GuildsController < ApplicationController
     @question_counts = ApplicationQuestion.group(:team_id).count
     @active_counts = TeamMembership.active.group(:team_id).count
     @pending_counts = TeamMembership.pending.group(:team_id).count
-    @health = Discord::GuildHealth.call(guild: @guild, teams: @teams)
+    # Teams the current user leads — they get to open those pages.
+    @led_team_ids = current_user ? TeamOfficer.where(discord_user_id: current_user.discord_id).pluck(:team_id).to_set : Set.new
+    # Permission health is a manager concern (and a REST call) — skip for members.
+    @health = can_manage? ? Discord::GuildHealth.call(guild: @guild, teams: @teams) : nil
   end
 
   # "Re-check" button on the health banner: bust the cache and re-render.

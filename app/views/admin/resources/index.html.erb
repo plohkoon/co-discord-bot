@@ -1,0 +1,50 @@
+<% content_for :title, "#{@klass.name.pluralize} · Admin · co-bot" %>
+<%= render "admin/nav" %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: @klass.name.pluralize,
+      back_href: admin_root_path, back_label: "Admin",
+      subtitle: "#{number_with_delimiter(@meta[:count])} #{"record".pluralize(@meta[:count])}, all servers.") do |header| %>
+  <% header.with_actions do %>
+    <%= form_with url: admin_resources_path(params[:model]), method: :get, class: "flex gap-2" do |f| %>
+      <%= f.search_field :q, value: params[:q], placeholder: "Search…", class: "field !py-1.5 text-sm" %>
+      <%= f.submit "Search", class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if @records.empty? %>
+  <%= render Ui::EmptyStateComponent.new do %>
+    <%= params[:q].present? ? "No #{@klass.name.pluralize.downcase} match “#{params[:q]}”." : "No #{@klass.name.pluralize.downcase} yet." %>
+  <% end %>
+<% else %>
+  <div class="overflow-x-auto rounded-xl border border-border bg-card">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <% @columns.each do |col| %>
+            <th class="px-3 py-2 font-medium"><%= col.name %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each do |record| %>
+          <tr class="border-b border-border/50 last:border-0 hover:bg-secondary/40">
+            <% @columns.each_with_index do |col, i| %>
+              <td class="px-3 py-2 whitespace-nowrap <%= "text-muted-foreground" unless i.zero? %>">
+                <% if i.zero? %>
+                  <%= link_to record.public_send(col.name), admin_resource_path(params[:model], record.id),
+                        class: "font-medium text-gold hover:underline" %>
+                <% else %>
+                  <%= admin_format_value(record.public_send(col.name)) %>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<%= render "admin/pagination", meta: @meta %>
