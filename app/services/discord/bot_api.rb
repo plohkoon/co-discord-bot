@@ -56,6 +56,8 @@ module Discord
 
     def edit_message(channel_id, message_id, payload) = patch("/channels/#{channel_id}/messages/#{message_id}", payload)
 
+    def delete_message(channel_id, message_id) = delete("/channels/#{channel_id}/messages/#{message_id}")
+
     private
 
     def get(path)
@@ -68,6 +70,10 @@ module Discord
 
     def patch(path, body)
       write(Net::HTTP::Patch, path, body)
+    end
+
+    def delete(path)
+      perform(Net::HTTP::Delete.new(URI("#{BASE}#{path}")), path)
     end
 
     def write(verb, path, body)

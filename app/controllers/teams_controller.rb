@@ -54,7 +54,7 @@ class TeamsController < ApplicationController
     @team.team_category = TeamCategory.locate(category_name) # blank clears it
 
     if @team.save
-      TeamRosterRefreshJob.perform_later(guild_id: @guild.id, team_id: @team.id)
+      RosterRefreshJob.perform_later(guild_id: @guild.id)
       redirect_to guild_team_path(@guild, @team), notice: "Roster details updated."
     else
       redirect_to guild_team_path(@guild, @team), alert: @team.errors.full_messages.to_sentence

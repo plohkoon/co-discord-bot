@@ -39,11 +39,11 @@ module Memberships
     test "officer changes refresh a posted roster; no-op reconciles do not" do
       ActsAsTenant.with_tenant(guild) { team.update!(roster_channel_id: 1, roster_message_id: 2) }
 
-      assert_enqueued_with(job: TeamRosterRefreshJob) { reconcile([ OFFICER_ROLE ]) }
+      assert_enqueued_with(job: RosterRefreshJob) { reconcile([ OFFICER_ROLE ]) }
 
       clear_enqueued_jobs
       reconcile([ OFFICER_ROLE ]) # unchanged — already an officer
-      assert_no_enqueued_jobs(only: TeamRosterRefreshJob)
+      assert_no_enqueued_jobs(only: RosterRefreshJob)
     end
 
     test "leaving the server clears officer rows and refreshes the roster" do
@@ -51,7 +51,7 @@ module Memberships
       reconcile([ OFFICER_ROLE ])
       clear_enqueued_jobs
 
-      assert_enqueued_with(job: TeamRosterRefreshJob) do
+      assert_enqueued_with(job: RosterRefreshJob) do
         RoleSync.on_leave(server: FakeServer.new(guild.id, guild.name), user_id: 11)
       end
       assert_empty officer_rows

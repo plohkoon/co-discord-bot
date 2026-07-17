@@ -25,7 +25,7 @@ module Commands
         end
 
         if team.save
-          TeamRosterRefreshJob.perform_later(guild_id: current_guild.id, team_id: team.id)
+          RosterRefreshJob.perform_later(guild_id: current_guild.id)
           respond("✅ Updated **#{team.name}**. The posted roster refreshes automatically.")
         else
           respond("⚠️ Couldn't update the team: #{team.errors.full_messages.to_sentence}")

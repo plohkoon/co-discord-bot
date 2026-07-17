@@ -5,8 +5,8 @@ module CoBot
   # instead of a pile of separate messages.
   #
   # discordrb 3.8 predates Components V2, so payloads are raw hashes sent over
-  # REST via Discord::BotApi — which also lets TeamRosterRefreshJob rebuild a
-  # message identically from a worker process. Mentions render colored but
+  # REST via Discord::BotApi — which also lets RosterRefreshJob rebuild the
+  # directory identically from a worker process. Mentions render colored but
   # ping nobody (allowed_mentions: none).
   module RosterMessage
     FLAG_COMPONENTS_V2 = 1 << 15
@@ -33,17 +33,6 @@ module CoBot
           team.update(roster_channel_id: channel_id, roster_message_id: message["id"])
         end
       end
-    end
-
-    # One unchunked payload for repainting an existing message in place.
-    def refresh_payload(teams, colors = {})
-      components = []
-      grouped(teams).each do |category, group|
-        components << separator if category && components.any?
-        components << header(category) if category
-        group.each { |team| components << team_container(team, colors) }
-      end
-      payload_for(components)
     end
 
     # The teams' role colors ({role id (string) => integer}) — the accent

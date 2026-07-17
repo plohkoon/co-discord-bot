@@ -125,21 +125,4 @@ class RosterMessageTest < ActiveSupport::TestCase
       assert_equal "## PvE Teams", payload["components"].first["content"]
     end
   end
-
-  test "refresh_payload rebuilds a single message for the given teams" do
-    pve = create_category("PvE Teams", position: 1)
-    team = create_team("Alpha", category: pve, current_needs: "Healers")
-    add_officer(team, 42, "carol")
-
-    payload = ActsAsTenant.with_tenant(guild) do
-      CoBot::RosterMessage.refresh_payload([ team ], { "100" => 0xABCDEF })
-    end
-
-    assert_equal CoBot::RosterMessage::FLAG_COMPONENTS_V2, payload["flags"]
-    container = payload["components"].find { |c| c["type"] == CONTAINER }
-    assert_equal 0xABCDEF, container["accent_color"]
-    content = container.dig("components", 0, "components", 0, "content")
-    assert_includes content, "__Current Needs:__ Healers"
-    assert_includes content, "<@42>"
-  end
 end

@@ -15,6 +15,10 @@ class TeamBackfillJob < ApplicationJob
       count = Memberships::Backfill.call(team: team)
       report(team, count, application_id, interaction_token)
     end
+
+    # The new team (with its freshly seeded officers) joins the posted roster;
+    # no-op if the roster was never posted.
+    RosterRefreshJob.perform_later(guild_id: guild_id)
   end
 
   private
