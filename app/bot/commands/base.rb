@@ -22,8 +22,11 @@ module Commands
         @command_options ||= []
       end
 
-      # permission gating (enforced in-handler — Discord's default_member_permissions
-      # is per-command, but our actions live under one /team command with mixed access)
+      # Permission gating, enforced in-handler. /guild carries a native
+      # Manage-Server default_member_permissions (config/commands.rb), but /team
+      # stays mixed (everyone + per-team officer), so its officer/admin gates
+      # live here — and stay as defense-in-depth even where Discord's per-command
+      # permission also applies (an admin can override it in Server Settings).
       def requires(role = :__read__)
         role == :__read__ ? @requires : (@requires = role)
       end

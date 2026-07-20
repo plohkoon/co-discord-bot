@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Category
       # Deleting a category keeps its teams — they just become uncategorized
       # (rendered headerless at the end of the directory).

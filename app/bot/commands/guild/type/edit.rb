@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Type
       # Rename/reorder a team type; renames land in any posted roster.
       class Edit < Commands::Base

@@ -4,7 +4,13 @@ module CoBot
   # group, a command without children is a leaf. Each node's class is discovered
   # from its path (Commands::Team::Member::Accept) unless `class:` overrides it.
   module CommandRegistry
-    Node = Struct.new(:name, :path, :description, :klass, :children, keyword_init: true) do
+    # Discord default_member_permissions bitfields (sent as a string), keyed by
+    # the manifest's `permissions:` symbol. manage_guild = Manage Server (1 << 5),
+    # matching the web's require_guild_manager. Only meaningful on top-level
+    # commands — Discord has no per-subcommand permission.
+    PERMISSION_BITS = { manage_guild: (1 << 5).to_s }.freeze
+
+    Node = Struct.new(:name, :path, :description, :klass, :children, :permissions, keyword_init: true) do
       def leaf? = children.empty?
     end
 
@@ -48,7 +54,8 @@ module CoBot
         keep = definition.commands.map { |command| command.name.to_s }.to_set
 
         definition.commands.each do |command|
-          bot.register_application_command(command.name, description_for(command), server_id: guild_id) do |builder|
+          bot.register_application_command(command.name, description_for(command), server_id: guild_id,
+            default_member_permissions: permission_bits(command)) do |builder|
             if command.leaf?
               apply_options(builder, class_for(command).command_options)
             else
@@ -71,6 +78,18 @@ module CoBot
       end
 
       private
+
+      # Discord default_member_permissions bitfield for a top-level command, or
+      # nil (visible to everyone). Raises on an unknown `permissions:` symbol so
+      # a manifest typo fails loudly at register time.
+      def permission_bits(node)
+        return nil if node.permissions.nil?
+
+        PERMISSION_BITS.fetch(node.permissions) do
+          raise "Command manifest: unknown permissions #{node.permissions.inspect} for `/#{node.name}` " \
+                "(known: #{PERMISSION_BITS.keys.inspect})"
+        end
+      end
 
       # Delete any guild command not in the manifest. register_application_command
       # only upserts, so removed top-level commands would otherwise linger.
@@ -143,9 +162,10 @@ module CoBot
         @parent_path = parent_path
       end
 
-      def command(name, description = nil, klass: nil, &block)
+      def command(name, description = nil, klass: nil, permissions: nil, &block)
         path = @parent_path + [ name.to_sym ]
-        node = Node.new(name: name.to_sym, path: path, description: description, klass: klass, children: [])
+        node = Node.new(name: name.to_sym, path: path, description: description, klass: klass,
+                        permissions: permissions, children: [])
         Builder.new(@definition, node.children, path).instance_eval(&block) if block
         @collection << node
       end

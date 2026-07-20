@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Category
       # Rename/reorder a category; the change lands in any posted roster.
       class Edit < Commands::Base

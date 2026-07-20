@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Type
       # Deleting a type keeps its teams — they just lose the type line.
       class Remove < Commands::Base
