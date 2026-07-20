@@ -17,6 +17,7 @@ module Memberships
       # that heal an already-archived row don't re-log). After the commit, so
       # the enqueue is outside the write path.
       log_removal(membership) unless was_archived
+      resolve_future_absences(membership)
       membership
     end
 
@@ -55,5 +56,14 @@ module Memberships
       )
     end
     private_class_method :log_removal
+    # A departed / removed member shouldn't linger in future morning digests, so
+    # cancel their still-active upcoming call-outs. System cancellation
+    # (cancelled_by nil), like the system-rejected pending application above.
+    def self.resolve_future_absences(membership)
+      membership.absences.active.upcoming.find_each do |absence|
+        Absences::Cancel.call(absence, cancelled_by_discord_id: nil)
+      end
+    end
+    private_class_method :resolve_future_absences
   end
 end

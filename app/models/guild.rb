@@ -12,6 +12,9 @@ class Guild < ApplicationRecord
   has_many :team_types, dependent: :destroy
 
   validates :id, presence: true
+  # An unknown zone would silently fall back to UTC (see #tz) and misfire every
+  # call-out day / digest — reject it instead of storing garbage.
+  validate :time_zone_is_recognized
 
   # `removed_at` marks guilds the bot was kicked from. The row (and all team
   # data) is kept so everything is back if the bot is re-invited.
@@ -51,10 +54,22 @@ class Guild < ApplicationRecord
   end
 
   def logging_enabled? = log_channel_id.present? || important_log_channel_id.present?
+  # The guild's local time zone (falls back to UTC for a blank/unknown value).
+  # Used to interpret call-out days and to fire the morning absence digest.
+  def tz = ActiveSupport::TimeZone[time_zone] || ActiveSupport::TimeZone["UTC"]
 
   def removed? = removed_at.present?
 
   def mark_removed!
     update!(removed_at: Time.current) unless removed?
+  end
+
+  private
+
+  # Accepts both IANA ids ("America/Chicago") and Rails' friendly names
+  # ("Central Time (US & Canada)") — anything ActiveSupport::TimeZone can
+  # resolve, which is exactly what #tz needs to not fall back to UTC.
+  def time_zone_is_recognized
+    errors.add(:time_zone, "is not a recognized time zone") unless ActiveSupport::TimeZone[time_zone.to_s]
   end
 end

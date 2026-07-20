@@ -49,7 +49,12 @@ class TeamsController < ApplicationController
     require_team_access
     return if performed?
 
-    load_roster_options if can_manage? || officer_of?(@team)
+    if can_manage? || officer_of?(@team)
+      load_roster_options
+      # Channel picker for the lead (call-out) channel on the team-details form.
+      load_discord_options
+      @absences = @team.absences.active.upcoming.order(:absence_on).to_a
+    end
     @questions = @team.application_questions.ordered
     @new_question = @team.application_questions.build(required: true)
 
@@ -70,9 +75,13 @@ class TeamsController < ApplicationController
     return if performed?
 
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
-                                         *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
+                                         :lead_channel_id, *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
     attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
+
+    if attrs.key?(:lead_channel_id) && !valid_lead_channel?(attrs[:lead_channel_id])
+      return redirect_to guild_team_path(@guild, @team), alert: "Pick the call-out channel from the list."
+    end
 
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
@@ -138,9 +147,16 @@ class TeamsController < ApplicationController
   end
 
   # Role/channel pickers come from Discord over REST (bot token), cached
-  # briefly. Empty lists (API down / bot missing) block creation safely.
+  # briefly. Empty lists (API down / bot missing / no token) block creation
+  # safely.
   def load_discord_options
     api = Discord::BotApi.new
+    unless api.configured?
+      @role_options = []
+      @channel_options = []
+      return
+    end
+
     @role_options = Rails.cache.fetch("discord/role_options/#{@guild.id}", expires_in: 60.seconds) do
       api.guild_roles(@guild.id)
          .reject { |r| r["managed"] || r["id"].to_s == @guild.id.to_s } # bot-managed roles + @everyone
@@ -157,6 +173,16 @@ class TeamsController < ApplicationController
     Rails.logger.warn("[web] loading Discord options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
     @role_options = []
     @channel_options = []
+  end
+
+  # The optional lead channel (blank = fall back to the review channel) must come
+  # from the guild's fetched channel list — rejects hand-crafted PATCHes.
+  def valid_lead_channel?(channel_id)
+    channel_id = channel_id.to_s.strip
+    return true if channel_id.blank?
+
+    load_discord_options
+    @channel_options.map(&:last).include?(channel_id)
   end
 
   # The submitted ids must come from the fetched lists — rejects hand-crafted

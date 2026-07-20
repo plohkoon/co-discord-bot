@@ -48,6 +48,28 @@ module Memberships
       assert application.reload.pending?
     end
 
+    test "archiving cancels a departed member's future active call-outs (system cancel)" do
+      membership, = build_pending_membership
+      future, past, other = ActsAsTenant.with_tenant(guild) do
+        membership.update!(status: :active)
+        [
+          Absence.create!(team: team, team_membership: membership, discord_user_id: 11, discord_username: "alice",
+                          absence_on: Date.current + 3, created_by_discord_id: 11),
+          Absence.create!(team: team, team_membership: membership, discord_user_id: 11, discord_username: "alice",
+                          absence_on: Date.current - 3, created_by_discord_id: 11),
+          Absence.create!(team: team, discord_user_id: 99, discord_username: "bob",
+                          absence_on: Date.current + 3, created_by_discord_id: 99)
+        ]
+      end
+
+      ActsAsTenant.with_tenant(guild) { Archive.call(membership) }
+
+      assert future.reload.cancelled?
+      assert_nil future.cancelled_by_discord_id # system cancellation
+      assert past.reload.active?   # already past — left alone
+      assert other.reload.active?  # a different member — untouched
+    end
+
     test "archiving leaves decided applications alone" do
       membership, application = build_pending_membership
       ActsAsTenant.with_tenant(guild) do
