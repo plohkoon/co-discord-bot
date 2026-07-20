@@ -66,6 +66,33 @@
 <% end %>
 <% end %>
 
+<% if can_manage? || officer_of?(@team) %>
+<%= render Ui::SectionComponent.new(title: "Automated messages", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    DM'd to the applicant when they apply. Leave a box blank to use the default.
+    <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">{team}</code> becomes the team name and
+    <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">{user}</code> becomes a mention of the applicant.
+  </p>
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Application received message</span>
+      <%= f.text_area :apply_response, rows: 3, placeholder: Team::DEFAULT_APPLY_RESPONSE, class: "field w-full mt-1" %>
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">
+        Absence recorded message
+        <span class="text-muted-foreground/70">— takes effect once attendance tracking ships.</span>
+      </span>
+      <%= f.text_area :absence_response, rows: 3, placeholder: Team::DEFAULT_ABSENCE_RESPONSE, class: "field w-full mt-1" %>
+    </label>
+    <div class="flex justify-end">
+      <%= f.submit "Save messages", class: Ui::ButtonComponent.classes(variant: :gold) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
 <%= render Ui::SectionComponent.new(title: "Members", classes: "mb-12") do %>
   <% ordered = @members_by_status.values_at("pending", "active", "archived").compact.flatten %>
   <% if ordered.empty? %>

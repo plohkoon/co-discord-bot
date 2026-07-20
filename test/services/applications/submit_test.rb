@@ -28,11 +28,20 @@ module Applications
     def submit = ActsAsTenant.with_tenant(guild) { Submit.call(team: team, event: FakeEvent.new(11)) }
 
     test "submitting schedules the reminder and auto-reject timeline" do
-      assert_enqueued_jobs 4 do
+      assert_enqueued_jobs 5 do
         submit
       end
       assert_enqueued_jobs 3, only: ApplicationReminderJob
       assert_enqueued_jobs 1, only: ApplicationAutoRejectJob
+    end
+
+    test "submitting enqueues the applicant's confirmation DM after commit" do
+      assert_enqueued_with(
+        job: ConfirmationDmJob,
+        args: [ { guild_id: guild.id, team_id: team.id, discord_user_id: 11, kind: "apply" } ]
+      ) do
+        submit
+      end
     end
 
     test "a second application while one is pending raises DuplicatePending" do

@@ -74,6 +74,13 @@ module Discord
 
     def delete_message(channel_id, message_id) = delete("/channels/#{channel_id}/messages/#{message_id}")
 
+    # Open (or fetch the already-open) DM channel with a user and return its id.
+    def create_dm_channel(user_id) = post("/users/@me/channels", "recipient_id" => user_id.to_s)["id"]
+
+    # Send a message straight to a user's DMs. A closed/blocked DM surfaces as
+    # Forbidden, so callers treat delivery as best-effort.
+    def send_dm(user_id, payload) = create_message(create_dm_channel(user_id), payload)
+
     private
 
     def get(path)

@@ -1,0 +1,48 @@
+require "test_helper"
+
+class TeamTest < ActiveSupport::TestCase
+  def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
+
+  def team(**attrs)
+    ActsAsTenant.with_tenant(guild) do
+      Team.create!(name: "Alpha", team_role_id: 5, officer_role_id: 6, review_channel_id: 7, **attrs)
+    end
+  end
+
+  test "resolved_apply_response falls back to the default with tokens substituted" do
+    message = team.resolved_apply_response(user_mention: "<@11>")
+
+    assert_includes message, "Alpha"          # {team}
+    assert_includes message, "<@11>"           # {user}
+    assert_not_includes message, "{team}"
+    assert_not_includes message, "{user}"
+  end
+
+  test "resolved_absence_response falls back to the default with tokens substituted" do
+    message = team.resolved_absence_response(user_mention: "<@22>")
+
+    assert_includes message, "Alpha"
+    assert_includes message, "<@22>"
+    assert_not_includes message, "{team}"
+    assert_not_includes message, "{user}"
+  end
+
+  test "a stored template overrides the default and is substituted" do
+    subject = team(apply_response: "Hey {user}, welcome to {team}.")
+
+    assert_equal "Hey <@11>, welcome to Alpha.", subject.resolved_apply_response(user_mention: "<@11>")
+  end
+
+  test "a stored absence template overrides the default" do
+    subject = team(absence_response: "{user} out for {team}, noted.")
+
+    assert_equal "<@33> out for Alpha, noted.", subject.resolved_absence_response(user_mention: "<@33>")
+  end
+
+  test "a blank template is treated as unset and uses the default" do
+    subject = team(apply_response: "")
+
+    assert_equal Team::DEFAULT_APPLY_RESPONSE.gsub("{team}", "Alpha").gsub("{user}", "<@11>"),
+                 subject.resolved_apply_response(user_mention: "<@11>")
+  end
+end

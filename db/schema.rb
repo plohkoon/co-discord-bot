@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_20_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_120000) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -137,7 +137,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_000000) do
   end
 
   create_table "teams", force: :cascade do |t|
+    t.text "absence_response"
     t.boolean "active", default: true, null: false
+    t.text "apply_response"
     t.datetime "created_at", null: false
     t.text "current_needs"
     t.text "date_and_time"
