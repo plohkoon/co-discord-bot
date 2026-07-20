@@ -14,11 +14,15 @@ module Applications
 
     def self.call(...) = new(...).call
 
-    def initialize(application:, decision:, decided_by_discord_id:, role_granter: nil)
+    def initialize(application:, decision:, decided_by_discord_id:, role_granter: nil, log_event: true)
       @application = application
       @decision = decision.to_sym          # :accept or :reject
       @decided_by = decided_by_discord_id
       @role_granter = role_granter
+      # Reconciliation callers (Activate/Archive resolving a stranded pending
+      # application as a side effect of a role change) pass false — the primary
+      # event is logged at their own seam, not here.
+      @log_event = log_event
     end
 
     def call
@@ -38,10 +42,42 @@ module Applications
         archive_membership
       end
 
+      log_decision
       Result.new(status: :ok)
     end
 
     private
+
+    # The single decision seam for bot buttons, the web dashboard, and the
+    # 7-day auto-reject. Fired after the transitions commit (no network in it —
+    # it only enqueues). A human decision (decided_by present) is a mundane
+    # audit line; the system auto-reject (reject with no decider) is a
+    # high-priority "went unanswered" alert. A system accept (a manual role
+    # grant resolving a pending app) isn't a review decision — nothing logs.
+    def log_decision
+      return unless @log_event
+
+      if @decided_by
+        accepted = @decision == :accept
+        GuildLog.record(
+          guild: ActsAsTenant.current_tenant,
+          level: :low,
+          title: accepted ? "Application accepted" : "Application rejected",
+          description: "#{@application.applicant_mention} — **#{@application.team.name}**",
+          actor_id: @decided_by,
+          color: accepted ? 0x57F287 : 0xED4245
+        )
+      elsif @decision == :reject
+        GuildLog.record(
+          guild: ActsAsTenant.current_tenant,
+          level: :high,
+          title: "Application auto-rejected",
+          description: "#{@application.applicant_mention} to **#{@application.team.name}** " \
+                       "was auto-rejected after 7 days without a decision.",
+          color: 0xED4245
+        )
+      end
+    end
 
     def target_status = @decision == :accept ? :accepted : :rejected
 

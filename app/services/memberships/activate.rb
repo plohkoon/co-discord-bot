@@ -40,7 +40,7 @@ module Memberships
 
     def self.resolve_pending_applications(membership)
       membership.team_applications.pending.find_each do |application|
-        result = Applications::Decide.call(application: application, decision: :accept, decided_by_discord_id: nil)
+        result = Applications::Decide.call(application: application, decision: :accept, decided_by_discord_id: nil, log_event: false)
         # Repaint the review message (drop Accept/Reject) — best-effort. Skipped
         # if an officer's concurrent click won the claim; their flow repaints.
         Applications::RefreshReviewMessage.call(application) if result.status == :ok

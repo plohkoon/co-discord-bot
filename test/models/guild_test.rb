@@ -38,4 +38,32 @@ class GuildTest < ActiveSupport::TestCase
     assert_equal [ installed.id ], Guild.installed.pluck(:id)
     assert_equal [ removed.id ], Guild.removed.pluck(:id)
   end
+
+  test "log_channel_id_for uses each level's own channel when both are set" do
+    guild = Guild.new(important_log_channel_id: 111, log_channel_id: 222)
+    assert_equal 111, guild.log_channel_id_for(:high)
+    assert_equal 222, guild.log_channel_id_for(:low)
+  end
+
+  test "log_channel_id_for collapses onto the only configured channel" do
+    high_only = Guild.new(important_log_channel_id: 111)
+    assert_equal 111, high_only.log_channel_id_for(:high)
+    assert_equal 111, high_only.log_channel_id_for(:low) # low falls back to the important channel
+
+    low_only = Guild.new(log_channel_id: 222)
+    assert_equal 222, low_only.log_channel_id_for(:high) # high falls back to the log channel
+    assert_equal 222, low_only.log_channel_id_for(:low)
+  end
+
+  test "log_channel_id_for is nil when neither channel is set" do
+    guild = Guild.new
+    assert_nil guild.log_channel_id_for(:high)
+    assert_nil guild.log_channel_id_for(:low)
+  end
+
+  test "logging_enabled? is true when either channel is set" do
+    assert_not Guild.new.logging_enabled?
+    assert Guild.new(log_channel_id: 222).logging_enabled?
+    assert Guild.new(important_log_channel_id: 111).logging_enabled?
+  end
 end

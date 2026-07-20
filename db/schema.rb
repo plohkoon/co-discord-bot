@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_010001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_000000) do
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -46,6 +46,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_010001) do
   create_table "guilds", id: false, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "id", null: false
+    t.bigint "important_log_channel_id"
+    t.bigint "log_channel_id"
     t.string "name", default: "", null: false
     t.datetime "removed_at"
     t.datetime "updated_at", null: false
