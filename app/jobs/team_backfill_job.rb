@@ -14,6 +14,11 @@ class TeamBackfillJob < ApplicationJob
 
       count = Memberships::Backfill.call(team: team)
       report(team, count, application_id, interaction_token)
+
+      # Single shared seam for both /team create and the web New-team form (both
+      # enqueue this job): a mundane audit line that a team was created.
+      GuildLog.record(guild: guild, level: :low, title: "Team created",
+                      description: "**#{team.name}** was created.", color: 0x57F287)
     end
 
     # The new team (with its freshly seeded officers) joins the posted roster;

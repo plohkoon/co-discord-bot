@@ -48,6 +48,42 @@
 <% end %>
 
 <% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Log channels", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Pick where co-bot posts activity. The <span class="text-foreground">Important</span> channel
+    catches new applications and unanswered auto-rejects; the <span class="text-foreground">Log</span>
+    channel is a quieter audit trail (accepts, rejects, removals, new teams).
+    Leave one blank to route everything to the other.
+  </p>
+  <% if @channel_options.empty? %>
+    <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-4 text-sm text-foreground">
+      Couldn't load this server's channels from Discord — make sure the bot is in the server, then reload.
+    </div>
+  <% end %>
+  <%= form_with model: @guild, url: guild_path(@guild), method: :patch, scope: :guild,
+        class: "rounded-xl border border-border bg-card p-5 space-y-4" do |f| %>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Important — applications &amp; alerts</span>
+        <%= f.select :important_log_channel_id,
+              options_for_select(@channel_options, @guild.important_log_channel_id&.to_s),
+              { include_blank: "None" }, class: "field w-full mt-1" %>
+      </label>
+      <label class="block">
+        <span class="text-xs text-muted-foreground">Log — audit trail</span>
+        <%= f.select :log_channel_id,
+              options_for_select(@channel_options, @guild.log_channel_id&.to_s),
+              { include_blank: "None" }, class: "field w-full mt-1" %>
+      </label>
+    </div>
+    <div class="flex justify-end">
+      <%= f.submit "Save log channels", class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
+<% if can_manage? %>
 <%= render Ui::SectionComponent.new(title: "Roster settings", classes: "mt-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Teams pick from these lists (here, on team pages, and via

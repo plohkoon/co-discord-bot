@@ -45,6 +45,15 @@ module Applications
       # After the commit (the queue is a separate DB — never enqueue inside the
       # write transaction): reminders at 24h/3d/6d + auto-reject at 7 days.
       Timeline.schedule(application)
+
+      # High-priority: owners want to know a new application arrived.
+      GuildLog.record(
+        guild: ActsAsTenant.current_tenant,
+        level: :high,
+        title: "Application received",
+        description: "#{application.applicant_mention} applied to **#{@team.name}**.",
+        color: 0x5865F2
+      )
       application
     rescue ActiveRecord::RecordNotUnique
       # The partial-unique index rejected a second pending application.

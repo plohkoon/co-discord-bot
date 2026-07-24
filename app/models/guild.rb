@@ -1,6 +1,11 @@
 class Guild < ApplicationRecord
   self.primary_key = :id
 
+  # Log severity tiers. :high is the important channel owners watch (new
+  # applications, unanswered auto-rejects); :low is the mundane audit trail
+  # (accept/reject, member removed, team created).
+  LOG_LEVELS = %i[high low].freeze
+
   has_many :teams, dependent: :destroy
   has_many :team_applications, dependent: :destroy
   has_many :team_categories, dependent: :destroy
@@ -34,6 +39,18 @@ class Guild < ApplicationRecord
       TeamType::DEFAULT_NAMES.each_with_index { |name, i| TeamType.create!(name: name, position: i + 1) }
     end
   end
+
+  # The channel a log at `level` should post to. When only one channel is
+  # configured, everything collapses into it (the high channel falls back to
+  # the low, and vice versa). Returns nil when neither is set.
+  def log_channel_id_for(level)
+    case level.to_sym
+    when :high then important_log_channel_id || log_channel_id
+    when :low  then log_channel_id || important_log_channel_id
+    end
+  end
+
+  def logging_enabled? = log_channel_id.present? || important_log_channel_id.present?
 
   def removed? = removed_at.present?
 

@@ -30,7 +30,7 @@ Rails.application.routes.draw do
   end
 
   # --- Dashboard (per-guild, tenant-scoped) ---
-  resources :guilds, only: :show do
+  resources :guilds, only: %i[show update] do
     post :recheck, on: :member
     # Curated roster lists (Manage Server only): directory categories and the
     # team-type vocabulary that teams pick from.

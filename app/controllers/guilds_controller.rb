@@ -1,6 +1,6 @@
 class GuildsController < ApplicationController
   include GuildScoping
-  before_action :require_guild_manager, only: :recheck
+  before_action :require_guild_manager, only: %i[recheck update]
 
   def show
     @teams = @guild.teams.order(:name).to_a
@@ -12,10 +12,12 @@ class GuildsController < ApplicationController
     @led_team_ids = current_user ? TeamOfficer.where(discord_user_id: current_user.discord_id).pluck(:team_id).to_set : Set.new
     # Permission health is a manager concern (and a REST call) — skip for members.
     @health = can_manage? ? Discord::GuildHealth.call(guild: @guild, teams: @teams) : nil
-    # Curated roster lists, editable in the settings section (managers only).
+    # Curated roster lists + the log-channel pickers are manager-only (and a
+    # REST call), so skip both for plain members.
     if can_manage?
       @team_categories = TeamCategory.ordered.to_a
       @team_types = TeamType.ordered.to_a
+      load_channel_options
     end
   end
 
@@ -23,5 +25,47 @@ class GuildsController < ApplicationController
   def recheck
     Discord::GuildHealth.expire(@guild)
     redirect_to guild_path(@guild)
+  end
+
+  # Log-channel config (Manage Server only). Blank clears a channel; a
+  # non-blank id must come from the guild's real text-channel list.
+  def update
+    attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id)
+    attrs.transform_values! { |v| v.presence }
+
+    load_channel_options
+    unless valid_channel_choices?(attrs)
+      return redirect_to guild_path(@guild), alert: "Pick log channels from the list."
+    end
+
+    if @guild.update(attrs)
+      redirect_to guild_path(@guild), notice: "Log channels updated."
+    else
+      redirect_to guild_path(@guild), alert: @guild.errors.full_messages.to_sentence
+    end
+  end
+
+  private
+
+  # Text-channel pickers over REST (bot token), cached briefly. Mirrors
+  # TeamsController#load_discord_options (same cache key + shape). An empty
+  # list (API down / bot missing) blocks setting a channel safely.
+  def load_channel_options
+    @channel_options = Rails.cache.fetch("discord/channel_options/#{@guild.id}", expires_in: 60.seconds) do
+      Discord::BotApi.new.guild_channels(@guild.id)
+                     .select { |c| c["type"].to_i.zero? } # text channels
+                     .sort_by { |c| c["position"].to_i }
+                     .map { |c| [ "##{c["name"]}", c["id"].to_s ] }
+    end
+  rescue Discord::BotApi::Error => e
+    Rails.logger.warn("[web] loading channel options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
+    @channel_options = []
+  end
+
+  # Every submitted (non-blank) channel id must be one we fetched — rejects
+  # hand-crafted PATCHes pointing logs at arbitrary channels.
+  def valid_channel_choices?(attrs)
+    valid_ids = @channel_options.map(&:last)
+    attrs.values.compact.all? { |id| valid_ids.include?(id.to_s) }
   end
 end
