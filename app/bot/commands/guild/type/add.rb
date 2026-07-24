@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Type
       class Add < Commands::Base
         include RosterLookups
@@ -12,7 +12,7 @@ module Commands
         def call
           team_type = TeamType.new(name: resolve_text(option(:name).to_s.strip), position: option(:position))
           if team_type.save
-            respond("✅ Added team type **#{team_type.name}**. Teams can pick it in `/team create|edit`.")
+            respond("✅ Added team type **#{team_type.name}**. Teams can pick it in `/guild create` or `/team edit`.")
           else
             respond("⚠️ Couldn't add the team type: #{team_type.errors.full_messages.to_sentence}")
           end

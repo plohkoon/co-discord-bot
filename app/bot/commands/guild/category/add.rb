@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     module Category
       class Add < Commands::Base
         include RosterLookups
@@ -12,7 +12,7 @@ module Commands
         def call
           category = TeamCategory.new(name: resolve_text(option(:name).to_s.strip), position: option(:position))
           if category.save
-            respond("✅ Added category **#{category.name}**. Teams can pick it in `/team create|edit`.")
+            respond("✅ Added category **#{category.name}**. Teams can pick it in `/guild create` or `/team edit`.")
           else
             respond("⚠️ Couldn't add the category: #{category.errors.full_messages.to_sentence}")
           end

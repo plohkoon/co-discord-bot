@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     # Post the public team directory: one seamless Components-V2 message with
     # category headers and an inline Apply button beside each team. Leads are
     # read live from the officer role's holders.
@@ -10,7 +10,7 @@ module Commands
 
       def call
         teams = current_guild.teams.active.includes(:team_category, :team_type, :team_officers).to_a
-        return respond("No active teams to list yet — `/team create` one first.") if teams.empty?
+        return respond("No active teams to list yet — `/guild create` one first.") if teams.empty?
 
         channel_id = option(:channel) || event.channel&.id
         return respond("I can't find that channel.") unless channel_id
@@ -20,7 +20,7 @@ module Commands
         CoBot::RosterMessage.post(api: Discord::BotApi.new, channel_id: channel_id, teams: teams)
       rescue Discord::BotApi::Error
         follow_up("⚠️ I couldn't post in <##{channel_id}> — I need **Send Messages** there. " \
-                  "Grant it to my role (or re-run the invite link) and try `/team roster` again.")
+                  "Grant it to my role (or re-run the invite link) and try `/guild roster` again.")
       end
     end
   end

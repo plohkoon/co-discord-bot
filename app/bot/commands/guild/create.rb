@@ -1,5 +1,5 @@
 module Commands
-  module Team
+  module Guild
     class Create < Commands::Base
       include RosterLookups
 
