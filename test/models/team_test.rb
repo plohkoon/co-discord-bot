@@ -64,4 +64,24 @@ class TeamTest < ActiveSupport::TestCase
 
     assert_equal "Alpha is full — try again next season.", subject.resolved_closed_message
   end
+
+  test "a new team gets a pinging daily digest that skips same-day applications" do
+    subject = team
+
+    assert subject.review_digest?
+    assert subject.remind_ping?
+    assert_equal 1, subject.review_digest_after_days
+  end
+
+  test "the digest threshold has to be a day count the sweep can act on" do
+    # Past 7 an application would auto-reject before it was ever listed.
+    assert team(review_digest_after_days: 0).valid?
+    assert team(name: "Beta", review_digest_after_days: 7).valid?
+
+    subject = team(name: "Gamma")
+    subject.review_digest_after_days = 8
+    assert_not subject.valid?
+    subject.review_digest_after_days = -1
+    assert_not subject.valid?
+  end
 end

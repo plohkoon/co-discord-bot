@@ -76,7 +76,7 @@ class TeamsController < ApplicationController
 
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
                                          :lead_channel_id, :recruiting, :closed_message,
-                                         *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
+                                         *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS, *Team::REMINDER_FIELDS)
     attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
 

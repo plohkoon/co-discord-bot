@@ -52,6 +52,7 @@ CoBot::CommandRegistry.draw do
   component Commands::Components::ApplyButton
   component Commands::Components::AbsenceModal
   component Commands::Components::Decide
+  component Commands::Components::Pause
   component Commands::Components::AddNote
   component Commands::Components::NoteModal
   component Commands::Components::ViewNotes

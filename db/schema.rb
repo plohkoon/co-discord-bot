@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_24_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_130001) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -109,13 +109,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_120000) do
     t.bigint "discord_user_id", null: false
     t.string "discord_username", default: "", null: false
     t.bigint "guild_id", null: false
-    t.integer "reminder_stage", default: 0, null: false
+    t.datetime "paused_at"
+    t.bigint "paused_by_discord_id"
     t.bigint "review_channel_id"
     t.bigint "review_message_id"
     t.integer "source", default: 0, null: false
     t.integer "status", default: 0, null: false
     t.integer "team_id", null: false
     t.integer "team_membership_id"
+    t.datetime "timeline_started_at"
     t.datetime "updated_at", null: false
     t.index ["discord_user_id"], name: "index_team_applications_on_discord_user_id"
     t.index ["guild_id"], name: "index_team_applications_on_guild_id"
@@ -183,14 +185,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_120000) do
     t.text "description"
     t.string "emote"
     t.bigint "guild_id", null: false
+    t.bigint "last_review_digest_message_id"
+    t.date "last_review_digest_on"
     t.bigint "lead_channel_id"
     t.string "name", null: false
     t.bigint "officer_role_id", null: false
     t.integer "position", default: 0, null: false
     t.text "progression"
     t.boolean "recruiting", default: true, null: false
+    t.boolean "remind_ping", default: true, null: false
     t.text "requirements"
     t.bigint "review_channel_id", null: false
+    t.boolean "review_digest", default: true, null: false
+    t.integer "review_digest_after_days", default: 1, null: false
     t.bigint "roster_channel_id"
     t.bigint "roster_message_id"
     t.integer "team_category_id"

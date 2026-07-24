@@ -127,6 +127,38 @@
 <% end %>
 
 <% if can_manage? || officer_of?(@team) %>
+<%= render Ui::SectionComponent.new(title: "Review digest", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Each morning the bot posts one grouped list of the applications still waiting on you, instead of
+    scattering reminders through the day. It's skipped when the previous digest is still the newest message
+    in the review channel — nobody's said anything since, so a second copy adds nothing.
+    Applications are auto-rejected after 7 days either way, even with the digest off.
+  </p>
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
+    <label class="flex items-center gap-2 text-sm text-foreground">
+      <%= f.check_box :review_digest, class: "field-checkbox" %> Post the daily digest
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">
+        Only list applications waiting at least this many days
+        <span class="text-muted-foreground/70">— 0 lists them the morning after they arrive.</span>
+      </span>
+      <%= f.number_field :review_digest_after_days, min: 0, max: 7, class: "field w-full mt-1" %>
+    </label>
+    <label class="flex items-center gap-2 text-sm text-foreground">
+      <%= f.check_box :remind_ping, class: "field-checkbox" %>
+      Ping the officer role
+      <span class="text-xs text-muted-foreground">— off still posts the digest, it just doesn't notify anyone.</span>
+    </label>
+    <div class="flex justify-end">
+      <%= f.submit "Save digest", class: Ui::ButtonComponent.classes(variant: :gold) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
+<% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Automated messages", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     DM'd to the applicant when they apply. Leave a box blank to use the default.

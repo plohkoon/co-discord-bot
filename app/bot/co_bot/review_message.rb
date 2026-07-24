@@ -5,6 +5,7 @@ module CoBot
     BRAND  = 0x5865F2
     ACCEPT = 0x57F287
     REJECT = 0xED4245
+    PAUSED = 0xFEE75C
 
     module_function
 
@@ -23,13 +24,20 @@ module CoBot
     end
 
     def pending_embed(team, application)
+      paused = application.paused?
       Discordrb::Webhooks::Embed.new(
-        title: "Application — #{team.name}",
-        description: "From #{application.applicant_mention} (`#{application.discord_username}`)",
-        color: BRAND,
+        title: "Application — #{team.name}#{paused ? " · Paused" : ""}",
+        description: [ "From #{application.applicant_mention} (`#{application.discord_username}`)",
+                       (paused_line(application) if paused) ].compact.join("\n"),
+        color: paused ? PAUSED : BRAND,
         fields: answer_fields(application),
         timestamp: application.created_at
       )
+    end
+
+    def paused_line(application)
+      actor = application.paused_by_discord_id
+      "⏸️ Paused#{actor ? " by <@#{actor}>" : ""} — no reminders and no 7-day auto-reject until it's resumed."
     end
 
     def decided_embed(application)
@@ -50,11 +58,19 @@ module CoBot
       actor ? "#{verb} by <@#{actor}>" : "#{verb} automatically — no decision within 7 days"
     end
 
+    # Accept/Reject plus the park button — Pause while it's running, Resume once
+    # it's parked. Accept and Reject stay live either way, so pausing never
+    # blocks a decision.
     def decision_view(application)
       view = Discordrb::Webhooks::View.new
       view.row do |row|
         row.button(label: "Accept", style: :success, custom_id: CoBot::CommandRegistry.custom_id("decide", "accept", application.id))
         row.button(label: "Reject", style: :danger,  custom_id: CoBot::CommandRegistry.custom_id("decide", "reject", application.id))
+        if application.paused?
+          row.button(label: "▶️ Resume", style: :primary, custom_id: CoBot::CommandRegistry.custom_id("pause", "resume", application.id))
+        else
+          row.button(label: "⏸️ Pause", style: :secondary, custom_id: CoBot::CommandRegistry.custom_id("pause", "pause", application.id))
+        end
       end
       add_notes_row(view, application)
       view
