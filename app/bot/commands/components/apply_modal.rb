@@ -7,6 +7,9 @@ module Commands
       def call
         team = current_guild.teams.find_by(id: params[:team_id])
         return respond("That team no longer exists.") unless team
+        # Defense in depth: the team may have closed between opening this modal
+        # and submitting it (the roster button/pre-check guard fired earlier).
+        return respond(team.resolved_closed_message) unless team.recruiting?
 
         application = Applications::Submit.call(team: team, event: event)
         respond("✅ Your application to **#{team.name}** was submitted! The team's officers will review it.")

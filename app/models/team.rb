@@ -26,6 +26,10 @@ class Team < ApplicationRecord
   DEFAULT_ABSENCE_RESPONSE =
     "Thanks {user} — your absence for {team} has been recorded. See you next time!".freeze
 
+  # Shown on the roster (in place of the Apply button) when a team turns off
+  # `recruiting`. Overridable per team via `closed_message`; {team} substitutes.
+  DEFAULT_CLOSED_MESSAGE = "🔒 Not currently recruiting — check back soon!".freeze
+
   validates :name, presence: true, length: { maximum: 100 }
   validates_uniqueness_to_tenant :name, case_sensitive: false
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
@@ -65,12 +69,18 @@ class Team < ApplicationRecord
     render_message(absence_response.presence || DEFAULT_ABSENCE_RESPONSE, user_mention:)
   end
 
+  # The roster "not recruiting" notice — the stored override or the default,
+  # with {team} expanded. No {user} here (it's a public roster line, not a DM).
+  def resolved_closed_message
+    render_message(closed_message.presence || DEFAULT_CLOSED_MESSAGE)
+  end
+
   private
 
   # Single-pass substitution so a team name that itself contains "{user}" can't
   # be re-expanded, and so a stray backslash in the name isn't read as a gsub
   # backreference.
-  def render_message(template, user_mention:)
+  def render_message(template, user_mention: "")
     template.to_s.gsub(/\{(team|user)\}/) { Regexp.last_match(1) == "team" ? name.to_s : user_mention.to_s }
   end
 end

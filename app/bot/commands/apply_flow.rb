@@ -3,6 +3,9 @@ module Commands
   # the question modal. Submission lands in Components::ApplyModal either way.
   module ApplyFlow
     def start_application(team)
+      # Closed to applications: the roster button is hidden, but /team apply and
+      # any stale/persistent button still reach here — refuse with the notice.
+      return respond(team.resolved_closed_message) unless team.recruiting?
       return respond("You're already a member of **#{team.name}**.") if member_of?(team)
       return respond("You already have a pending application to **#{team.name}**.") if pending_for?(team)
 

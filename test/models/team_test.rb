@@ -50,4 +50,18 @@ class TeamTest < ActiveSupport::TestCase
     assert_equal 7, Team.new(review_channel_id: 7).notify_channel_id                       # no lead channel
     assert_equal 99, Team.new(review_channel_id: 7, lead_channel_id: 99).notify_channel_id # lead channel wins
   end
+
+  test "teams recruit by default" do
+    assert team.recruiting?
+  end
+
+  test "resolved_closed_message falls back to the default" do
+    assert_equal Team::DEFAULT_CLOSED_MESSAGE, team.resolved_closed_message
+  end
+
+  test "a stored closed_message overrides the default with {team} substituted" do
+    subject = team(closed_message: "{team} is full — try again next season.")
+
+    assert_equal "Alpha is full — try again next season.", subject.resolved_closed_message
+  end
 end

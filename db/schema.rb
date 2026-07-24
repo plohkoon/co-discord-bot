@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_120003) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_120000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -176,6 +176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_120003) do
     t.text "absence_response"
     t.boolean "active", default: true, null: false
     t.text "apply_response"
+    t.text "closed_message"
     t.datetime "created_at", null: false
     t.text "current_needs"
     t.text "date_and_time"
@@ -187,6 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_120003) do
     t.bigint "officer_role_id", null: false
     t.integer "position", default: 0, null: false
     t.text "progression"
+    t.boolean "recruiting", default: true, null: false
     t.text "requirements"
     t.bigint "review_channel_id", null: false
     t.bigint "roster_channel_id"
