@@ -69,7 +69,8 @@ class TeamsController < ApplicationController
     require_team_access
     return if performed?
 
-    attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+    attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
+                                         *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
     attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
 
@@ -82,7 +83,9 @@ class TeamsController < ApplicationController
     @team.emote = emote
 
     if @team.save
-      RosterRefreshJob.perform_later(guild_id: @guild.id)
+      # The DM templates don't show in the directory, so a message-only save
+      # skips the refresh.
+      RosterRefreshJob.perform_later(guild_id: @guild.id) if roster_changed?
       redirect_to guild_team_path(@guild, @team), notice: "Team updated."
     else
       redirect_to guild_team_path(@guild, @team), alert: @team.errors.full_messages.to_sentence
@@ -91,12 +94,19 @@ class TeamsController < ApplicationController
 
   private
 
+  # The columns the /team roster directory renders. Message templates aren't
+  # among them, so a save that only touched those doesn't reflow the roster.
+  ROSTER_COLUMNS = (%w[name position team_category_id team_type_id] + Team::ROSTER_FIELDS.map(&:to_s)).freeze
+
+  def roster_changed? = @team.saved_changes.keys.intersect?(ROSTER_COLUMNS)
+
   # Category and type come from the guild's curated lists. Lookups are
   # tenant-scoped, so ids from another guild (or a blank select) resolve to
-  # nil and clear the association.
+  # nil and clear the association. Only touched when the form actually carried
+  # the field — the "Automated messages" form omits it and must not wipe it.
   def assign_roster_choices(attrs)
-    @team.team_category = TeamCategory.find_by(id: attrs[:team_category_id])
-    @team.team_type = TeamType.find_by(id: attrs[:team_type_id])
+    @team.team_category = TeamCategory.find_by(id: attrs[:team_category_id]) if attrs.key?(:team_category_id)
+    @team.team_type = TeamType.find_by(id: attrs[:team_type_id]) if attrs.key?(:team_type_id)
   end
 
   # Select options for the roster form.
@@ -109,7 +119,7 @@ class TeamsController < ApplicationController
   # become mentions so they render in the roster; unknown ones stay as typed.
   # The standalone emote field is stricter — see resolve_emote below.
   def resolve_text_fields(attrs)
-    ([ :name ] + (Team::ROSTER_FIELDS - [ :emote ])).each do |field|
+    ([ :name ] + (Team::ROSTER_FIELDS - [ :emote ]) + Team::MESSAGE_FIELDS).each do |field|
       attrs[field] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[field]) if attrs[field]
     end
   end

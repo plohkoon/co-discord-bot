@@ -43,9 +43,9 @@ module Applications
       end
 
       # After the commit (the queue is a separate DB — never enqueue inside the
-      # write transaction): reminders at 24h/3d/6d + auto-reject at 7 days.
+      # write transaction): reminders at 24h/3d/6d + auto-reject at 7 days, plus
+      # the "you're on file" DM to the applicant.
       Timeline.schedule(application)
-
       # High-priority: owners want to know a new application arrived.
       GuildLog.record(
         guild: ActsAsTenant.current_tenant,
@@ -53,6 +53,12 @@ module Applications
         title: "Application received",
         description: "#{application.applicant_mention} applied to **#{@team.name}**.",
         color: 0x5865F2
+      )
+      ConfirmationDmJob.perform_later(
+        guild_id: application.guild_id,
+        team_id: @team.id,
+        discord_user_id: application.discord_user_id,
+        kind: "apply"
       )
       application
     rescue ActiveRecord::RecordNotUnique
