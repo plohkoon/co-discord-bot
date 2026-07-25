@@ -51,8 +51,6 @@ class TeamsController < ApplicationController
 
     if can_manage? || officer_of?(@team)
       load_roster_options
-      # Channel picker for the lead (call-out) channel on the team-details form.
-      load_discord_options
       @absences = @team.absences.active.upcoming.order(:absence_on).to_a
     end
     @questions = @team.application_questions.ordered
@@ -75,14 +73,10 @@ class TeamsController < ApplicationController
     return if performed?
 
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
-                                         :lead_channel_id, :recruiting, :closed_message,
+                                         :recruiting, :closed_message,
                                          *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS, *Team::REMINDER_FIELDS)
     attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
-
-    if attrs.key?(:lead_channel_id) && !valid_lead_channel?(attrs[:lead_channel_id])
-      return redirect_to guild_team_path(@guild, @team), alert: "Pick the call-out channel from the list."
-    end
 
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
@@ -175,16 +169,6 @@ class TeamsController < ApplicationController
     Rails.logger.warn("[web] loading Discord options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
     @role_options = []
     @channel_options = []
-  end
-
-  # The optional lead channel (blank = fall back to the review channel) must come
-  # from the guild's fetched channel list — rejects hand-crafted PATCHes.
-  def valid_lead_channel?(channel_id)
-    channel_id = channel_id.to_s.strip
-    return true if channel_id.blank?
-
-    load_discord_options
-    @channel_options.map(&:last).include?(channel_id)
   end
 
   # The submitted ids must come from the fetched lists — rejects hand-crafted

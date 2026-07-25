@@ -8,7 +8,6 @@ module Commands
       description "Update a team's name and roster details"
       string :team, "The team to update", required: true, autocomplete: true
       string :name, "New team name (renames the team)"
-      channel :lead_channel, "Channel for absence call-outs (defaults to the review channel)", channel_types: [ :text ]
       string :category, "Roster section header — pick an existing category", autocomplete: true
       string :team_type, "Team type — pick from this server's list", autocomplete: true
       string :emote, "Emoji shown before the team name in the roster (unicode or :name: from this server)"
@@ -45,7 +44,6 @@ module Commands
         return unless resolve_emote_onto(team)
 
         team.name = resolve_text(option(:name).to_s.strip) if option(:name)
-        team.lead_channel_id = option(:lead_channel) if option(:lead_channel)
         team.recruiting = option(:recruiting) unless option(:recruiting).nil?
         ::Team::REMINDER_FIELDS.each do |field|
           team[field] = option(field) unless option(field).nil?

@@ -20,7 +20,7 @@ class AbsenceLeadNotifyJob < ApplicationJob
 
   def notify(absence, guild, api)
     team = absence.team
-    channel_id = team.notify_channel_id or return
+    channel_id = team.review_channel_id or return
 
     # Midday guild-local so Discord's <t:…:D> (rendered in each viewer's own
     # zone) shows the same calendar date to everyone.

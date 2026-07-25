@@ -47,10 +47,6 @@ class Team < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }
 
-  # Where absence call-outs (the immediate heads-up and the morning digest) are
-  # announced — the dedicated lead channel when set, else the review channel.
-  def notify_channel_id = lead_channel_id.presence || review_channel_id
-
   # Sensible starter questions created with a new team; admins can edit them
   # later via the web dashboard.
   DEFAULT_QUESTIONS = [

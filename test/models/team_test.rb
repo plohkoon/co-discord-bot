@@ -46,11 +46,6 @@ class TeamTest < ActiveSupport::TestCase
                  subject.resolved_apply_response(user_mention: "<@11>")
   end
 
-  test "notify_channel_id prefers the lead channel, falling back to the review channel" do
-    assert_equal 7, Team.new(review_channel_id: 7).notify_channel_id                       # no lead channel
-    assert_equal 99, Team.new(review_channel_id: 7, lead_channel_id: 99).notify_channel_id # lead channel wins
-  end
-
   test "teams recruit by default" do
     assert team.recruiting?
   end
