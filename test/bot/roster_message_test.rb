@@ -133,4 +133,24 @@ class RosterMessageTest < ActiveSupport::TestCase
       assert_equal "## PvE Teams", payload["components"].first["content"]
     end
   end
+
+  test "a recruiting team renders a section with the inline Apply button" do
+    team = create_team("Open")
+    body = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }
+             .first.first["components"].first["components"].first
+
+    assert_equal SECTION, body["type"]
+    assert_equal "applyto:#{team.id}", body.dig("accessory", "custom_id")
+  end
+
+  test "a team closed to applications drops the Apply button and shows its message" do
+    team = create_team("Closed", recruiting: false, closed_message: "{team} is full.")
+    body = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }
+             .first.first["components"].first["components"].first
+
+    assert_equal TEXT_DISPLAY, body["type"] # a plain block, not a section
+    assert_nil body["accessory"]            # no Apply button
+    assert_includes body["content"], "### <@&100>" # still shows the team block…
+    assert_includes body["content"], "Closed is full." # …with the closed message ({team} expanded)
+  end
 end

@@ -72,6 +72,29 @@
 <% end %>
 
 <% if can_manage? || officer_of?(@team) %>
+<%= render Ui::SectionComponent.new(title: "Recruiting", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    When a team isn't recruiting, its <strong class="text-foreground">Apply</strong> button is hidden on the
+    <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team roster</code> directory and the message below shows instead.
+    <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">{team}</code> becomes the team name.
+  </p>
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
+    <label class="flex items-center gap-2 text-sm text-foreground">
+      <%= f.check_box :recruiting, class: "field-checkbox" %> Open to new applications
+    </label>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Message shown when not recruiting</span>
+      <%= f.text_area :closed_message, rows: 2, placeholder: Team::DEFAULT_CLOSED_MESSAGE, class: "field w-full mt-1" %>
+    </label>
+    <div class="flex justify-end">
+      <%= f.submit "Save recruiting", class: Ui::ButtonComponent.classes(variant: :gold) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
+<% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Call-outs", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Upcoming absences members reported with <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team absence</code>.

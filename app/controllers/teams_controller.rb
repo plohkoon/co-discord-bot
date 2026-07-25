@@ -75,7 +75,8 @@ class TeamsController < ApplicationController
     return if performed?
 
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
-                                         :lead_channel_id, *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
+                                         :lead_channel_id, :recruiting, :closed_message,
+                                         *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS)
     attrs.delete(:position) unless can_manage?
     resolve_text_fields(attrs)
 
@@ -105,7 +106,8 @@ class TeamsController < ApplicationController
 
   # The columns the /team roster directory renders. Message templates aren't
   # among them, so a save that only touched those doesn't reflow the roster.
-  ROSTER_COLUMNS = (%w[name position team_category_id team_type_id] + Team::ROSTER_FIELDS.map(&:to_s)).freeze
+  ROSTER_COLUMNS = (%w[name position team_category_id team_type_id recruiting closed_message] +
+    Team::ROSTER_FIELDS.map(&:to_s)).freeze
 
   def roster_changed? = @team.saved_changes.keys.intersect?(ROSTER_COLUMNS)
 
@@ -128,7 +130,7 @@ class TeamsController < ApplicationController
   # become mentions so they render in the roster; unknown ones stay as typed.
   # The standalone emote field is stricter — see resolve_emote below.
   def resolve_text_fields(attrs)
-    ([ :name ] + (Team::ROSTER_FIELDS - [ :emote ]) + Team::MESSAGE_FIELDS).each do |field|
+    ([ :name, :closed_message ] + (Team::ROSTER_FIELDS - [ :emote ]) + Team::MESSAGE_FIELDS).each do |field|
       attrs[field] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[field]) if attrs[field]
     end
   end

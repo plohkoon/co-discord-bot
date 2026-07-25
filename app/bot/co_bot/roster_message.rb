@@ -114,8 +114,18 @@ module CoBot
       {
         "type" => CONTAINER,
         "accent_color" => (color if color.positive?),
-        "components" => [ team_section(team) ]
+        "components" => [ team_body(team) ]
       }
+    end
+
+    # A recruiting team gets a section with the inline Apply button as its
+    # accessory. A team closed to applications drops the button — a Components-V2
+    # section requires an accessory, so it renders as a plain text block with the
+    # team's "not recruiting" notice appended under the roster lines.
+    def team_body(team)
+      return team_section(team) if team.recruiting?
+
+      { "type" => TEXT_DISPLAY, "content" => "#{team_block(team)}\n\n#{team.resolved_closed_message}" }
     end
 
     def team_section(team)
