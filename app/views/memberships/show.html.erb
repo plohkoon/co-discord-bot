@@ -44,6 +44,17 @@
                     <%= button_to "Reject", reject_guild_team_membership_application_path(@guild, @team, @membership, application),
                           form: { data: { turbo_confirm: "Reject this application?" } },
                           class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>
+                    <% if application.paused? %>
+                      <%= button_to "Resume", resume_guild_team_membership_application_path(@guild, @team, @membership, application),
+                            class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+                    <% else %>
+                      <%= button_to "Pause", pause_guild_team_membership_application_path(@guild, @team, @membership, application),
+                            form: { data: { turbo_confirm: "Pause this application? Reminders stop and it won't auto-reject after 7 days." } },
+                            class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+                    <% end %>
+                  <% end %>
+                  <% if application.paused? %>
+                    <span class="text-xs text-gold whitespace-nowrap">⏸️ Paused</span>
                   <% end %>
                   <%= render StatusBadgeComponent.new(status: application.status) %>
                 </div>

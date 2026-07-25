@@ -65,6 +65,16 @@ module Discord
       assert_equal payload, JSON.parse(send_req.body)
     end
 
+    test "channel_messages asks for the newest slice of history" do
+      fake = FakeHttp.new(ok(JSON.generate([ { "id" => "9" }, { "id" => "8" } ])))
+
+      messages = with_http(fake) { api.channel_messages(123, limit: 5) }
+
+      assert_equal %w[9 8], messages.map { |m| m["id"] }
+      assert_equal "/api/v10/channels/123/messages", fake.requests.first.uri.path
+      assert_equal "limit=5", fake.requests.first.uri.query
+    end
+
     test "a closed DM maps to Forbidden" do
       forbidden = Net::HTTPForbidden.new("1.1", "403", "Forbidden")
       forbidden.instance_variable_set(:@read, true)

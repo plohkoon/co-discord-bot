@@ -1,8 +1,9 @@
-# The scheduled morning delivery of one (team, day) absence digest — mirrors
-# Applications::Timeline, but the durable AbsenceDigest row replaces
-# reminder_stage as the collapse/idempotency mechanism. Scheduled once when the
-# first call-out for a team-day lands; the job reads the *live* active set at
-# fire time so cancellations and late additions are reflected.
+# The scheduled morning delivery of one (team, day) absence digest. Unlike the
+# application review digest — a daily sweep, because "still waiting" is a live
+# query — an absence is anchored to a specific future date, so the job is
+# scheduled once when the first call-out for a team-day lands. It reads the
+# *live* active set at fire time, so cancellations and late additions land too;
+# the durable AbsenceDigest row is the idempotency mechanism.
 class AbsenceDigest::Timeline
   DIGEST_HOUR = 8 # local hour to post the morning "who's out today" digest
 

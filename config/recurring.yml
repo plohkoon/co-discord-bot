@@ -1,12 +1,22 @@
 # Solid Queue recurring tasks, per environment. The scheduler runs wherever the
 # workers run (bin/jobs in dev, SOLID_QUEUE_IN_PUMA in production).
-# Application reminders/auto-rejects are NOT here — they're exact-timestamp
-# scheduled jobs enqueued by Applications::Timeline at submit time.
-# Absence digests are likewise NOT here — they're exact-timestamp AbsenceDigestJobs
+# Absence digests are NOT here — they're exact-timestamp AbsenceDigestJobs
 # enqueued per (team, day) by AbsenceDigest::Timeline when the first call-out
-# lands, fired at the guild-local morning, not a cron sweep.
+# lands, fired at the guild-local morning.
+# Application review reminders ARE here: one hourly sweep that does each guild's
+# work when that guild's own clock reaches ReviewDigestSweepJob::DIGEST_HOUR.
+# Nothing is scheduled per application, so nothing can go stale.
+
+development:
+  review_digest_sweep:
+    class: ReviewDigestSweepJob
+    schedule: every hour at minute 5
 
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+
+  review_digest_sweep:
+    class: ReviewDigestSweepJob
+    schedule: every hour at minute 5

@@ -76,10 +76,15 @@ class GuildLogSeamsTest < ActiveSupport::TestCase
   end
 
   test "the 7-day auto-reject logs a HIGH event with no actor" do
+    # The deadline is swept by the daily digest now rather than a per-application
+    # job, but it still goes through Decide with no decider — so it still logs
+    # HIGH, and Archive's internal rejects still stay quiet (log_event: false).
     application = pending_application
+    with_tenant { application.update!(created_at: 8.days.ago) }
 
-    with_tenant { Applications::Timeline.auto_reject(application: application, api: FakeApi.new) }
+    with_tenant { Applications::ReviewDigest.deliver(team: team, on: Date.current, api: FakeApi.new) }
 
+    assert application.reload.rejected?
     assert_equal [ :high ], logged_levels
     assert_nil guild_log_args.last[:actor_id]
   end

@@ -43,9 +43,10 @@ module Applications
       end
 
       # After the commit (the queue is a separate DB — never enqueue inside the
-      # write transaction): reminders at 24h/3d/6d + auto-reject at 7 days, plus
-      # the "you're on file" DM to the applicant.
-      Timeline.schedule(application)
+      # write transaction): the guild log entry and the "you're on file" DM to
+      # the applicant. Nothing time-based is scheduled here — the daily
+      # ReviewDigestSweepJob reads the live rows, so there are no
+      # per-application timers to go stale.
       # High-priority: owners want to know a new application arrived.
       GuildLog.record(
         guild: ActsAsTenant.current_tenant,

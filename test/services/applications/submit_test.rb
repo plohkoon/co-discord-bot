@@ -27,12 +27,12 @@ module Applications
 
     def submit = ActsAsTenant.with_tenant(guild) { Submit.call(team: team, event: FakeEvent.new(11)) }
 
-    test "submitting schedules the reminder and auto-reject timeline" do
-      assert_enqueued_jobs 5 do
+    test "submitting schedules no per-application timers — the daily sweep owns that" do
+      assert_enqueued_jobs 1 do # the confirmation DM, and nothing else
         submit
       end
-      assert_enqueued_jobs 3, only: ApplicationReminderJob
-      assert_enqueued_jobs 1, only: ApplicationAutoRejectJob
+      assert_enqueued_jobs 0, only: ApplicationReminderJob
+      assert_enqueued_jobs 0, only: ApplicationAutoRejectJob
     end
 
     test "submitting enqueues the applicant's confirmation DM after commit" do

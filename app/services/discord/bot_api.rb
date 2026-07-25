@@ -68,6 +68,12 @@ module Discord
       delete("/guilds/#{guild_id}/members/#{user_id}/roles/#{role_id}", reason: reason)
     end
 
+    # Newest-first slice of a channel's history. Needs Read Message History —
+    # without it Discord answers 403, which surfaces as Forbidden.
+    def channel_messages(channel_id, limit: 5)
+      get("/channels/#{channel_id}/messages?limit=#{limit.to_i}")
+    end
+
     def create_message(channel_id, payload) = post("/channels/#{channel_id}/messages", payload)
 
     def edit_message(channel_id, message_id, payload) = patch("/channels/#{channel_id}/messages/#{message_id}", payload)

@@ -18,6 +18,9 @@ module Commands
       string :current_needs, "What the team is looking for (e.g. DPS)"
       boolean :recruiting, "Accepting applications? Turn off to hide the roster Apply button"
       string :closed_message, "Roster note shown when not recruiting (blank = default)"
+      boolean :review_digest, "Post the daily digest of applications still waiting for review"
+      integer :review_digest_after_days, "Days an application must wait before the digest lists it (0-7)"
+      boolean :remind_ping, "Ping the officer role on the digest (off = visible but silent)"
       integer :position, "Sort order within the category (lower first; Manage Server only)"
       officer_only!
 
@@ -44,6 +47,9 @@ module Commands
         team.name = resolve_text(option(:name).to_s.strip) if option(:name)
         team.lead_channel_id = option(:lead_channel) if option(:lead_channel)
         team.recruiting = option(:recruiting) unless option(:recruiting).nil?
+        ::Team::REMINDER_FIELDS.each do |field|
+          team[field] = option(field) unless option(field).nil?
+        end
         team.closed_message = resolve_text(option(:closed_message).to_s.strip) if option(:closed_message)
         # Position is directory placement relative to OTHER teams — a server
         # layout call, not a team detail, so leads don't get it.

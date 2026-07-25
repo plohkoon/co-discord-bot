@@ -48,6 +48,9 @@ Rails.application.routes.draw do
           member do
             post :accept
             post :reject
+            # Park a pending application: no reminders, no 7-day auto-reject.
+            post :pause
+            post :resume
           end
         end
       end

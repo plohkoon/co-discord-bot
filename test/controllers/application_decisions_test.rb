@@ -100,4 +100,49 @@ class ApplicationDecisionsTest < ActionDispatch::IntegrationTest
     assert_redirected_to guild_path(@guild)
     assert @membership.reload.pending?
   end
+
+  # --- pause / resume ------------------------------------------------------
+
+  def pause_path = pause_guild_team_membership_application_path(@guild, @team, @membership, @application)
+  def resume_path = resume_guild_team_membership_application_path(@guild, @team, @membership, @application)
+
+  test "a lead can park an application and pick it back up" do
+    post pause_path
+
+    assert_redirected_to guild_team_membership_path(@guild, @team, @membership)
+    @application.reload
+    assert @application.paused?
+    assert @application.pending?
+    assert_equal users(:member).discord_id, @application.paused_by_discord_id
+
+    assert_no_enqueued_jobs do # nothing to re-arm — the daily sweep reads the row
+      post resume_path
+    end
+    assert_not @application.reload.paused?
+    assert @application.timeline_started_at.present?, "the review clock restarts at the resume"
+  end
+
+  test "pausing a decided application is refused" do
+    ActsAsTenant.with_tenant(@guild) { @application.update!(status: :accepted, decided_at: Time.current) }
+
+    post pause_path
+
+    assert_match(/already handled/, flash[:alert])
+    assert_nil @application.reload.paused_at
+  end
+
+  test "resuming one that isn't paused says so" do
+    post resume_path
+
+    assert_match(/already in that state/, flash[:notice])
+    assert_nil @application.reload.timeline_started_at
+  end
+
+  test "plain members can't pause" do
+    ActsAsTenant.with_tenant(@guild) { TeamOfficer.delete_all }
+
+    post pause_path
+    assert_redirected_to guild_path(@guild)
+    assert_nil @application.reload.paused_at
+  end
 end

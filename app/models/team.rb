@@ -30,9 +30,19 @@ class Team < ApplicationRecord
   # `recruiting`. Overridable per team via `closed_message`; {team} substitutes.
   DEFAULT_CLOSED_MESSAGE = "🔒 Not currently recruiting — check back soon!".freeze
 
+  # The team's daily review digest (Applications::ReviewDigest): post it at all,
+  # how long an application must have been waiting to be worth listing, and
+  # whether the digest pings the officer role. Switching the digest off silences
+  # the notification only — the 7-day auto-reject rides on the same sweep.
+  REMINDER_FIELDS = %i[review_digest review_digest_after_days remind_ping].freeze
+
   validates :name, presence: true, length: { maximum: 100 }
   validates_uniqueness_to_tenant :name, case_sensitive: false
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
+  # 0 lists an application the morning after it arrives; past 7 it would never
+  # be listed at all, since the sweep auto-rejects at 7 days.
+  validates :review_digest_after_days,
+            numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 7 }
 
   scope :active, -> { where(active: true) }
   scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }

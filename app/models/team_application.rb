@@ -15,4 +15,14 @@ class TeamApplication < ApplicationRecord
   def applicant_mention = "<@#{discord_user_id}>"
 
   def decided? = accepted? || rejected?
+
+  # Parked by a lead: the daily digest skips it and its 7-day deadline stops
+  # running. Deciding an application ends the pause implicitly, which also
+  # settles the (tiny) race between a pause and the sweep claiming the row.
+  def paused? = pending? && paused_at.present?
+
+  # The clock Applications::ReviewDigest measures against — both the "waiting N
+  # days" line and the auto-reject deadline. Resuming a paused application
+  # restarts it, so it diverges from created_at.
+  def timeline_start = timeline_started_at || created_at
 end
