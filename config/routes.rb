@@ -36,6 +36,9 @@ Rails.application.routes.draw do
     # team-type vocabulary that teams pick from.
     resources :team_categories, only: %i[create update destroy]
     resources :team_types, only: %i[create update destroy]
+    # Absence call-outs — a lead cancels any on their team, a raider cancels
+    # their own (from the guild page). Creating them happens in Discord.
+    resources :absences, only: :destroy
     resources :teams, only: %i[new create show update] do
       resources :questions, only: %i[create update destroy], controller: "team_questions"
       resources :memberships, only: :show do

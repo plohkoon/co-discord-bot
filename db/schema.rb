@@ -10,7 +10,42 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_120003) do
+  create_table "absence_digests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "digest_on", null: false
+    t.bigint "guild_id", null: false
+    t.bigint "lead_channel_id"
+    t.bigint "lead_message_id"
+    t.datetime "sent_at"
+    t.integer "status", default: 0, null: false
+    t.integer "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["guild_id"], name: "index_absence_digests_on_guild_id"
+    t.index ["team_id", "digest_on"], name: "index_absence_digests_on_team_id_and_digest_on", unique: true
+  end
+
+  create_table "absences", force: :cascade do |t|
+    t.date "absence_on", null: false
+    t.datetime "cancelled_at"
+    t.bigint "cancelled_by_discord_id"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_discord_id", null: false
+    t.bigint "discord_user_id", null: false
+    t.string "discord_username", default: "", null: false
+    t.bigint "guild_id", null: false
+    t.text "note"
+    t.integer "status", default: 0, null: false
+    t.integer "team_id", null: false
+    t.integer "team_membership_id"
+    t.datetime "updated_at", null: false
+    t.index ["discord_user_id", "absence_on"], name: "index_absences_on_discord_user_id_and_absence_on"
+    t.index ["guild_id"], name: "index_absences_on_guild_id"
+    t.index ["team_id", "absence_on"], name: "index_absences_on_team_id_and_absence_on"
+    t.index ["team_id", "discord_user_id", "absence_on"], name: "index_absences_one_active_per_user_team_day", unique: true, where: "status = 0"
+    t.index ["team_id"], name: "index_absences_on_team_id"
+  end
+
   create_table "application_answers", force: :cascade do |t|
     t.text "answer", default: "", null: false
     t.datetime "created_at", null: false
@@ -50,6 +85,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_120000) do
     t.bigint "log_channel_id"
     t.string "name", default: "", null: false
     t.datetime "removed_at"
+    t.string "time_zone", default: "UTC", null: false
     t.datetime "updated_at", null: false
     t.index ["id"], name: "index_guilds_on_id", unique: true
   end
@@ -146,6 +182,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_120000) do
     t.text "description"
     t.string "emote"
     t.bigint "guild_id", null: false
+    t.bigint "lead_channel_id"
     t.string "name", null: false
     t.bigint "officer_role_id", null: false
     t.integer "position", default: 0, null: false
@@ -175,6 +212,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_120000) do
     t.index ["discord_id"], name: "index_users_on_discord_id", unique: true
   end
 
+  add_foreign_key "absence_digests", "guilds"
+  add_foreign_key "absence_digests", "teams"
+  add_foreign_key "absences", "guilds"
+  add_foreign_key "absences", "team_memberships"
+  add_foreign_key "absences", "teams"
   add_foreign_key "application_answers", "guilds"
   add_foreign_key "application_answers", "team_applications"
   add_foreign_key "application_questions", "guilds"

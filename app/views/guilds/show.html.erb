@@ -47,6 +47,48 @@
   <% end %>
 <% end %>
 
+<% if @my_absences.present? %>
+<%= render Ui::SectionComponent.new(title: "My call-outs", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Days you told a team you'll miss (via <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team absence</code>). Cancel one if plans change.
+  </p>
+  <div class="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+    <% @my_absences.each do |absence| %>
+      <div class="flex items-center gap-3 px-4 py-3">
+        <div class="flex-1 min-w-0">
+          <div class="text-sm text-foreground">
+            <%= absence.absence_on.to_fs(:long) %>
+            <span class="text-muted-foreground">· <%= absence.team.name %></span>
+          </div>
+          <% if absence.note.present? %>
+            <div class="text-xs text-muted-foreground truncate"><%= absence.note %></div>
+          <% end %>
+        </div>
+        <%= button_to "Cancel", guild_absence_path(@guild, absence), method: :delete,
+              class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<% end %>
+
+<% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Server settings", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    The server's time zone anchors call-out days and the morning absence digest (posted at 8am local).
+  </p>
+  <%= form_with model: @guild, url: guild_path(@guild), method: :patch, scope: :guild,
+        class: "rounded-lg border border-border bg-card p-4 flex flex-wrap items-end gap-3" do |f| %>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Time zone</span>
+      <%= f.select :time_zone, options_for_select(ActiveSupport::TimeZone.all.map { |tz| [ tz.to_s, tz.name ] }, @guild.time_zone),
+            {}, class: "field mt-1" %>
+    </label>
+    <%= f.submit "Save", class: Ui::ButtonComponent.classes(variant: :gold) %>
+  <% end %>
+<% end %>
+<% end %>
+
 <% if can_manage? %>
 <%= render Ui::SectionComponent.new(title: "Log channels", classes: "mt-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">

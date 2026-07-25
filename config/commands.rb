@@ -13,6 +13,7 @@ CoBot::CommandRegistry.draw do
   command :team, "Browse and manage a team" do
     command :list
     command :apply
+    command :absence
     command :edit
 
     command :member, "Manage a team member" do
@@ -49,6 +50,7 @@ CoBot::CommandRegistry.draw do
   # each class's `component` declaration.
   component Commands::Components::ApplyModal
   component Commands::Components::ApplyButton
+  component Commands::Components::AbsenceModal
   component Commands::Components::Decide
   component Commands::Components::AddNote
   component Commands::Components::NoteModal

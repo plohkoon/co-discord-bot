@@ -2,6 +2,9 @@
 # workers run (bin/jobs in dev, SOLID_QUEUE_IN_PUMA in production).
 # Application reminders/auto-rejects are NOT here — they're exact-timestamp
 # scheduled jobs enqueued by Applications::Timeline at submit time.
+# Absence digests are likewise NOT here — they're exact-timestamp AbsenceDigestJobs
+# enqueued per (team, day) by AbsenceDigest::Timeline when the first call-out
+# lands, fired at the guild-local morning, not a cron sweep.
 
 production:
   clear_solid_queue_finished_jobs:

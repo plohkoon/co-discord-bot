@@ -7,6 +7,8 @@ class Team < ApplicationRecord
   has_many :team_applications, dependent: :destroy
   has_many :team_memberships, dependent: :destroy
   has_many :team_officers, dependent: :delete_all
+  has_many :absences, dependent: :destroy
+  has_many :absence_digests, dependent: :destroy
 
   # Free-form roster details shown in the /team roster directory (and the web
   # team page). All optional; rendered verbatim. `emote` decorates the heading
@@ -30,6 +32,10 @@ class Team < ApplicationRecord
 
   scope :active, -> { where(active: true) }
   scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }
+
+  # Where absence call-outs (the immediate heads-up and the morning digest) are
+  # announced — the dedicated lead channel when set, else the review channel.
+  def notify_channel_id = lead_channel_id.presence || review_channel_id
 
   # Sensible starter questions created with a new team; admins can edit them
   # later via the web dashboard.

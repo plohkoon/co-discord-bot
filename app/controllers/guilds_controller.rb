@@ -4,6 +4,9 @@ class GuildsController < ApplicationController
 
   def show
     @teams = @guild.teams.order(:name).to_a
+    # This member's own upcoming call-outs — how a Discord-only raider
+    # self-cancels from the web (shown to every viewer, not just managers).
+    @my_absences = current_user ? Absence.active.upcoming.for_user(current_user.discord_id).order(:absence_on).to_a : []
     # One grouped query each instead of N per-team queries (tenant-scoped).
     @question_counts = ApplicationQuestion.group(:team_id).count
     @active_counts = TeamMembership.active.group(:team_id).count
@@ -27,11 +30,12 @@ class GuildsController < ApplicationController
     redirect_to guild_path(@guild)
   end
 
-  # Log-channel config (Manage Server only). Blank clears a channel; a
-  # non-blank id must come from the guild's real text-channel list.
+  # Guild-level settings (Manage Server only): the log channels and the time
+  # zone that anchors call-out days and the morning digests. Blank clears a
+  # channel; a non-blank id must come from the guild's real text-channel list.
   def update
-    attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id)
-    attrs.transform_values! { |v| v.presence }
+    attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :time_zone)
+    %i[log_channel_id important_log_channel_id].each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
 
     load_channel_options
     unless valid_channel_choices?(attrs)
@@ -39,7 +43,7 @@ class GuildsController < ApplicationController
     end
 
     if @guild.update(attrs)
-      redirect_to guild_path(@guild), notice: "Log channels updated."
+      redirect_to guild_path(@guild), notice: "Server settings saved."
     else
       redirect_to guild_path(@guild), alert: @guild.errors.full_messages.to_sentence
     end
@@ -62,10 +66,11 @@ class GuildsController < ApplicationController
     @channel_options = []
   end
 
-  # Every submitted (non-blank) channel id must be one we fetched — rejects
-  # hand-crafted PATCHes pointing logs at arbitrary channels.
+  # Every submitted (non-blank) CHANNEL id must be one we fetched — rejects
+  # hand-crafted PATCHes pointing logs at arbitrary channels. time_zone isn't a
+  # channel, so it's validated by the model, not here.
   def valid_channel_choices?(attrs)
     valid_ids = @channel_options.map(&:last)
-    attrs.values.compact.all? { |id| valid_ids.include?(id.to_s) }
+    attrs.slice(:log_channel_id, :important_log_channel_id).values.compact.all? { |id| valid_ids.include?(id.to_s) }
   end
 end

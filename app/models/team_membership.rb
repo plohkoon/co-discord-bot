@@ -4,6 +4,7 @@ class TeamMembership < ApplicationRecord
   belongs_to :team
   has_many :team_applications, dependent: :nullify
   has_many :membership_notes, -> { order(created_at: :desc) }, dependent: :destroy
+  has_many :absences, dependent: :nullify
 
   enum :status, { pending: 0, active: 1, archived: 2 }, default: :pending
 
