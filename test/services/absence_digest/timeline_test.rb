@@ -98,15 +98,14 @@ class AbsenceDigest::TimelineTest < ActiveSupport::TestCase
     assert_not_nil digest.sent_at
   end
 
-  test "deliver posts to the lead channel when the team has one" do
-    team(lead_channel_id: 999)
+  test "deliver posts to the team's review channel — call-outs aren't separately configurable" do
     day = Date.new(2026, 7, 26)
     absence(11, on: day)
     digest = digest_for(day)
 
     deliver(digest)
 
-    assert_equal 999, @api.created.first.first
+    assert_equal CHANNEL, @api.created.first.first
   end
 
   test "deliver excludes cancelled call-outs" do

@@ -52,11 +52,6 @@
         <span class="text-xs text-muted-foreground">Current needs</span>
         <%= f.text_field :current_needs, placeholder: "e.g. DPS (esp. Warlock)", class: "field w-full mt-1" %>
       </label>
-      <label class="block">
-        <span class="text-xs text-muted-foreground">Call-out channel (absences)</span>
-        <%= f.select :lead_channel_id, options_for_select(@channel_options, @team.lead_channel_id&.to_s),
-              { include_blank: "Use review channel" }, class: "field w-full mt-1" %>
-      </label>
       <% if can_manage? %>
         <label class="block">
           <span class="text-xs text-muted-foreground">Position (sort order in the roster, lower first)</span>
@@ -98,7 +93,7 @@
 <%= render Ui::SectionComponent.new(title: "Call-outs", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Upcoming absences members reported with <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team absence</code>.
-    A grouped reminder posts to the call-out channel each morning.
+    A grouped reminder posts to the team's review channel each morning.
   </p>
   <% if @absences.blank? %>
     <%= render Ui::EmptyStateComponent.new do %>

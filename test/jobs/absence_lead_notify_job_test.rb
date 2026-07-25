@@ -18,7 +18,6 @@ class AbsenceLeadNotifyJobTest < ActiveSupport::TestCase
 
   OFFICER_ROLE = 42
   REVIEW = 700
-  LEAD = 800
   DAY = Date.new(2026, 7, 26)
 
   def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
@@ -54,11 +53,10 @@ class AbsenceLeadNotifyJobTest < ActiveSupport::TestCase
     assert_equal [ OFFICER_ROLE.to_s ], payload["allowed_mentions"]["roles"]
   end
 
-  test "posts to the lead channel when the team has one" do
-    team(lead_channel_id: LEAD)
+  test "posts to the team's review channel — call-outs aren't separately configurable" do
     run_job(absence.id)
 
-    assert_equal LEAD, @api.created.first.first
+    assert_equal REVIEW, @api.created.first.first
   end
 
   test "swallows a vanished channel (NotFound)" do

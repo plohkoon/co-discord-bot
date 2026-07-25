@@ -29,7 +29,7 @@ class AbsenceDigest::Timeline
   end
 
   def self.post(team, absences, api)
-    channel_id = team.notify_channel_id or return
+    channel_id = team.review_channel_id or return
 
     api.create_message(channel_id, {
       "content" => build_message(team, absences),

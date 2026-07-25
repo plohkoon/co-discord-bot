@@ -8,7 +8,6 @@ module Commands
       role    :role, "Role granted to team members", required: true
       role    :officer_role, "Role pinged to review applications", required: true
       channel :review_channel, "Channel where applications are posted", required: true, channel_types: [ :text ]
-      channel :lead_channel, "Channel for absence call-outs (defaults to the review channel)", channel_types: [ :text ]
       string  :category, "Roster section header — pick an existing category", autocomplete: true
       string  :team_type, "Team type — pick from this server's list", autocomplete: true
       string  :emote, "Emoji shown before the team name in the roster (unicode or :name: from this server)"
@@ -31,7 +30,6 @@ module Commands
           team_role_id: option(:role),
           officer_role_id: option(:officer_role),
           review_channel_id: option(:review_channel),
-          lead_channel_id: option(:lead_channel),
           team_category: category,
           team_type: team_type,
           position: option(:position).to_i,
