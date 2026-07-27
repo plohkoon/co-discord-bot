@@ -126,6 +126,33 @@
 <% end %>
 
 <% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Events channel", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Discord's own Events tab never posts to a channel. Pick one here and co-bot announces every
+    server event when it's created, posts a "come join in" when it starts, and removes both an hour
+    after it ends. Posts never ping anyone. Leave blank to turn this off.
+  </p>
+  <% if @channel_options.empty? %>
+    <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-4 text-sm text-foreground">
+      Couldn't load this server's channels from Discord — make sure the bot is in the server, then reload.
+    </div>
+  <% end %>
+  <%= form_with model: @guild, url: guild_path(@guild), method: :patch, scope: :guild,
+        class: "rounded-xl border border-border bg-card p-5 space-y-4" do |f| %>
+    <label class="block sm:max-w-sm">
+      <span class="text-xs text-muted-foreground">Events — announcements &amp; start nudges</span>
+      <%= f.select :events_channel_id,
+            options_for_select(@channel_options, @guild.events_channel_id&.to_s),
+            { include_blank: "None" }, class: "field w-full mt-1" %>
+    </label>
+    <div class="flex justify-end">
+      <%= f.submit "Save events channel", class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
+<% if can_manage? %>
 <%= render Ui::SectionComponent.new(title: "Roster settings", classes: "mt-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Teams pick from these lists (here, on team pages, and via

@@ -30,16 +30,16 @@ class GuildsController < ApplicationController
     redirect_to guild_path(@guild)
   end
 
-  # Guild-level settings (Manage Server only): the log channels and the time
-  # zone that anchors call-out days and the morning digests. Blank clears a
+  # Guild-level settings (Manage Server only): the log/events channels and the
+  # time zone that anchors call-out days and the morning digests. Blank clears a
   # channel; a non-blank id must come from the guild's real text-channel list.
   def update
-    attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :time_zone)
-    %i[log_channel_id important_log_channel_id].each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
+    attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :events_channel_id, :time_zone)
+    CHANNEL_SETTINGS.each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
 
     load_channel_options
     unless valid_channel_choices?(attrs)
-      return redirect_to guild_path(@guild), alert: "Pick log channels from the list."
+      return redirect_to guild_path(@guild), alert: "Pick channels from the list."
     end
 
     if @guild.update(attrs)
@@ -50,6 +50,10 @@ class GuildsController < ApplicationController
   end
 
   private
+
+  # Every guild setting that holds a channel id — permitted, blank-cleared and
+  # validated against the guild's real channel list as one set.
+  CHANNEL_SETTINGS = %i[log_channel_id important_log_channel_id events_channel_id].freeze
 
   # Text-channel pickers over REST (bot token), cached briefly. Mirrors
   # TeamsController#load_discord_options (same cache key + shape). An empty
@@ -71,6 +75,6 @@ class GuildsController < ApplicationController
   # channel, so it's validated by the model, not here.
   def valid_channel_choices?(attrs)
     valid_ids = @channel_options.map(&:last)
-    attrs.slice(:log_channel_id, :important_log_channel_id).values.compact.all? { |id| valid_ids.include?(id.to_s) }
+    attrs.slice(*CHANNEL_SETTINGS).values.compact.all? { |id| valid_ids.include?(id.to_s) }
   end
 end

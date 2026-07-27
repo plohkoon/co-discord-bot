@@ -11,6 +11,11 @@ class Guild < ApplicationRecord
   has_many :team_categories, dependent: :destroy
   has_many :team_types, dependent: :destroy
 
+  # Pointing the events channel somewhere new moves the posts with it (and
+  # clearing it takes them down). On commit, because the job re-reads the guild
+  # from a separate process.
+  after_update_commit :resync_event_posts, if: :saved_change_to_events_channel_id?
+
   validates :id, presence: true
   # An unknown zone would silently fall back to UTC (see #tz) and misfire every
   # call-out day / digest — reject it instead of storing garbage.
@@ -54,6 +59,10 @@ class Guild < ApplicationRecord
   end
 
   def logging_enabled? = log_channel_id.present? || important_log_channel_id.present?
+
+  # Scheduled-event mirroring is off until a channel is picked: with nowhere to
+  # post, there's nothing to announce, start or clean up.
+  def events_enabled? = events_channel_id.present?
   # The guild's local time zone (falls back to UTC for a blank/unknown value).
   # Used to interpret call-out days and to fire the morning absence digest.
   def tz = ActiveSupport::TimeZone[time_zone] || ActiveSupport::TimeZone["UTC"]
@@ -65,6 +74,13 @@ class Guild < ApplicationRecord
   end
 
   private
+
+  # Both halves of the move are the job's problem: emptying the channel we left
+  # and filling the one we moved to.
+  def resync_event_posts
+    previous_channel_id, _current = saved_change_to_events_channel_id
+    GuildEventsResyncJob.perform_later(guild_id: id, previous_channel_id: previous_channel_id)
+  end
 
   # Accepts both IANA ids ("America/Chicago") and Rails' friendly names
   # ("Central Time (US & Canada)") — anything ActiveSupport::TimeZone can

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_130000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -78,8 +78,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
     t.index ["team_id"], name: "index_application_questions_on_team_id"
   end
 
+  create_table "guild_events", force: :cascade do |t|
+    t.bigint "announcement_message_id"
+    t.bigint "channel_id"
+    t.datetime "cleaned_up_at"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "discord_event_id", null: false
+    t.datetime "ended_at"
+    t.bigint "guild_id", null: false
+    t.string "name", default: "", null: false
+    t.datetime "scheduled_end_time"
+    t.datetime "scheduled_start_time"
+    t.bigint "start_message_id"
+    t.integer "status", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.index ["guild_id", "discord_event_id"], name: "index_guild_events_on_guild_id_and_discord_event_id", unique: true
+  end
+
   create_table "guilds", id: false, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "events_channel_id"
     t.bigint "id", null: false
     t.bigint "important_log_channel_id"
     t.bigint "log_channel_id"
