@@ -20,6 +20,7 @@ class ApplicationCharacterJob < ApplicationJob
       application = TeamApplication.find_by(id: application_id) or next
       next if application.character_input.blank? || application.wow_character_id.present?
 
+
       # A shadow record if this is the first co-bot has heard of them — an
       # applicant almost certainly hasn't signed into the web app.
       user = User.for_discord(application.discord_user_id, username: application.discord_username)
@@ -30,6 +31,14 @@ class ApplicationCharacterJob < ApplicationJob
       )
 
       result.ok? ? record(application, user, result) : notify_unresolved(application, result)
+      # Stamped whichever way it went — this is what turns "still looking" into
+      # a definite answer for everything reading the application.
+      application.update!(character_resolved_at: Time.current)
+
+      # The review message was posted saying "Loading raider data…" — repaint it
+      # now that the answer is known, whichever way it went. Without this an
+      # officer would sit looking at a spinner forever.
+      Applications::RefreshReviewMessage.call(application.reload)
     end
   end
 
@@ -42,9 +51,21 @@ class ApplicationCharacterJob < ApplicationJob
     application.team_membership&.update!(wow_character: character)
     # First character someone gets becomes their main; never overrides a choice.
     WowCharacters::SetMain.ensure(user)
-    WowCharacterRefreshJob.perform_later(character.id)
+    # Gathered INLINE rather than enqueued: we are already in a background job,
+    # and the review message repaints immediately after. Enqueuing would repaint
+    # an empty summary and leave the officer waiting for a second edit that
+    # nothing guarantees.
+    gather(character)
 
     Rails.logger.info("[wow] application #{application.id} resolved to #{character.full_name}")
+  end
+
+  # One character's data failing must not cost the resolution — the claim
+  # stands, and the hourly sweep will fill in what's missing.
+  def gather(character)
+    WowCharacterRefreshJob.perform_now(character.id)
+  rescue StandardError => e
+    Rails.logger.warn("[wow] gathering #{character.full_name} failed: #{e.class}: #{e.message}")
   end
 
   # Best-effort, like every other DM here: a closed DM is swallowed rather than

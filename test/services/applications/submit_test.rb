@@ -55,7 +55,10 @@ module Applications
 
       assert_equal "Thrall-Sargeras", application.character_input
       assert_nil application.wow_character_id, "resolution happens out of band"
-      assert application.character_unresolved?, "until the job runs"
+      # Not "unresolved" — that would render as a typo to an officer. Until the
+      # job has looked, the honest state is "still looking".
+      assert application.character_pending?
+      assert_not application.character_unresolved?
     end
 
     test "no character named means no resolution work" do

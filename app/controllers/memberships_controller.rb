@@ -7,6 +7,12 @@ class MembershipsController < ApplicationController
   def show
     @applications = @membership.team_applications.includes(:application_answers).recent
     @notes = @membership.membership_notes
+    # The character they play on this team, falling back to what they applied
+    # on — a lead looking at a fresh application shouldn't have to set it first.
+    @character = @membership.wow_character || @applications.detect(&:wow_character)&.wow_character
+    # Shown when nothing resolved, so "typo" reads differently from "no data".
+    @unresolved_input = @applications.detect(&:character_unresolved?)&.character_input
+    @character_candidates = @membership.user&.wow_characters&.by_prominence || WowCharacter.none
   end
 
   # Pull the team role and archive — the web mirror of /team member remove.

@@ -30,7 +30,7 @@ module CoBot
         description: [ "From #{application.applicant_mention} (`#{application.discord_username}`)",
                        (paused_line(application) if paused) ].compact.join("\n"),
         color: paused ? PAUSED : BRAND,
-        fields: answer_fields(application),
+        fields: raider_fields(application) + answer_fields(application),
         timestamp: application.created_at
       )
     end
@@ -46,7 +46,7 @@ module CoBot
         title: "Application — #{application.team.name} · #{accepted ? 'Accepted' : 'Rejected'}",
         description: "From #{application.applicant_mention}\n#{decided_line(application)}",
         color: accepted ? ACCEPT : REJECT,
-        fields: answer_fields(application),
+        fields: raider_fields(application) + answer_fields(application),
         timestamp: application.decided_at || application.created_at
       )
     end
@@ -90,7 +90,33 @@ module CoBot
       view.row do |row|
         row.button(label: "📝 Add note",   style: :secondary, custom_id: CoBot::CommandRegistry.custom_id("note", membership_id))
         row.button(label: "📋 View notes", style: :secondary, custom_id: CoBot::CommandRegistry.custom_id("notes", membership_id))
+        # A link button, not an interaction: Discord opens it directly, so the
+        # full report costs the bot nothing. Omitted when APP_URL isn't set —
+        # a bot job has no request to infer a host from, and a broken link is
+        # worse than no link.
+        url = detail_url(application)
+        row.button(label: "🔎 Show more detail", style: :link, url: url) if url
       end
+    end
+
+    # The applicant's page on the web app, where the full history lives.
+    def detail_url(application)
+      origin = ENV["APP_URL"].presence&.chomp("/") or return nil
+      return nil unless application.team_membership_id
+
+      "#{origin}/guilds/#{application.guild_id}/teams/#{application.team_id}" \
+        "/memberships/#{application.team_membership_id}"
+    end
+
+    # The character digest, above the answers because it's the thing an officer
+    # scans first. Absent entirely when the team doesn't collect a character —
+    # an empty field would just be noise for those teams.
+    def raider_fields(application)
+      body = Applications::RaiderSummary.body(application) or return []
+
+      [ Discordrb::Webhooks::EmbedField.new(
+        name: Applications::RaiderSummary::HEADING, value: body.to_s[0, 1024], inline: false
+      ) ]
     end
 
     def answer_fields(application)

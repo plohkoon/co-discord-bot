@@ -11,12 +11,22 @@ class TeamApplication < ApplicationRecord
   belongs_to :wow_character, optional: true
   has_many :application_answers, -> { order(:position) }, dependent: :destroy
 
+  def character_asked? = character_input.present?
+
+  # We've looked. Until this is stamped, a missing character means "still
+  # looking", not "no such character" — resolution is asynchronous, so those
+  # would otherwise be indistinguishable for the first seconds of every
+  # application's life.
+  def character_resolution_attempted? = character_resolved_at.present?
+
   # They named a character and Blizzard didn't recognise it — a typo, almost
   # always. Worth surfacing to both the applicant and the reviewer rather than
   # silently showing no character at all.
-  def character_unresolved? = character_input.present? && wow_character_id.nil?
+  def character_unresolved?
+    character_asked? && character_resolution_attempted? && wow_character_id.nil?
+  end
 
-  def character_asked? = character_input.present?
+  def character_pending? = character_asked? && !character_resolution_attempted?
 
   enum :status, { pending: 0, accepted: 1, rejected: 2 }, default: :pending
   enum :source, { applied: 0, manual: 1 }, default: :applied

@@ -51,11 +51,13 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
 
   # --- The happy path ---
 
-  test "resolves the character, claims it, and starts gathering its data" do
+  # Gathering runs inline, not enqueued: the review message repaints
+  # immediately afterwards and would otherwise show an empty summary.
+  test "resolves the character, claims it, and gathers its data inline" do
     app = application
+    run_job(app)
 
-    assert_enqueued_with(job: WowCharacterRefreshJob) { run_job(app) }
-
+    assert_no_enqueued_jobs only: WowCharacterRefreshJob
     app.reload
     character = app.wow_character
     assert_equal "Thrall-Sargeras", character.full_name
@@ -134,8 +136,8 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
 
   test "an application with no character is a no-op" do
     app = application(input: nil)
+    run_job(app)
 
-    assert_no_enqueued_jobs(only: WowCharacterRefreshJob) { run_job(app) }
     assert_nil app.reload.wow_character_id
   end
 
@@ -144,8 +146,19 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
     run_job(app)
     first = app.reload.wow_character_id
 
-    assert_no_enqueued_jobs(only: WowCharacterRefreshJob) { run_job(app) }
+    run_job(app)
     assert_equal first, app.reload.wow_character_id
+  end
+
+  # The character is claimed even when the four data services are unreachable —
+  # the hourly sweep fills in what's missing.
+  test "a failure while gathering does not lose the resolution" do
+    app = application
+    stub_singleton_method(WowCharacterRefreshJob, :perform_now, ->(*, **) { raise BattleNet::Client::Error }) do
+      run_job(app)
+    end
+
+    assert_equal "Thrall", app.reload.wow_character.name
   end
 
   test "a deleted application or guild is ignored rather than raising" do
