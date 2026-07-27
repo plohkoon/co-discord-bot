@@ -29,7 +29,9 @@ bin/brakeman --no-pager   # Rails security scan (runs in CI)
 bin/bundler-audit         # gem CVE scan (runs in CI)
 ```
 
-CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, rubocop, `test`, and `test:system`.
+CI (`.github/workflows/ci.yml`) runs brakeman, bundler-audit, importmap audit, rubocop, `test`, and `test:system`. All five are **required status checks on `main`** (admins can bypass), so a red PR can't merge.
+
+**Deploy is automatic on merge to `main`** — `.github/workflows/fly-deploy.yml` runs `flyctl deploy --remote-only` to Fly. It's chained to CI via `workflow_run` rather than its own `push` trigger (the two used to race, so a merge with failing tests still shipped); `needs:` can't cross workflow files, which is why it's `workflow_run` and not a job in `ci.yml`. It checks the triggering run's `conclusion == 'success'` **and** `event == 'push'` — this job holds the Fly token, so a green `pull_request` run must never reach it — and checks out `workflow_run.head_sha` so the deployed commit is exactly the one CI validated, not whatever the branch tip has since become. **Migrations need no release step:** `bin/docker-entrypoint` runs `db:prepare` whenever the command is `bin/rails server`, which the Dockerfile `CMD` satisfies. Editing this workflow only takes effect once it's on `main` — `workflow_run` always uses the default branch's copy.
 
 Environment: copy `.env.example` → `.env`. Needs `DISCORD_BOT_TOKEN` (with **Server Members Intent** enabled in the portal) and `DISCORD_CLIENT_ID/SECRET` for web OAuth — from a **dev-only Discord application**; production uses a separate app whose credentials live in Fly secrets (a shared token would deliver gateway events to both environments). Commands register per guild on join. `bin/bot` idles gracefully when the token is missing, so `bin/dev` won't crash-loop before credentials exist.
 
