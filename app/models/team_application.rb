@@ -3,6 +3,9 @@ class TeamApplication < ApplicationRecord
 
   belongs_to :team
   belongs_to :team_membership, optional: true
+  # See TeamMembership#user — same snowflake join, same "nil means unknown".
+  belongs_to :user, foreign_key: :discord_user_id, primary_key: :discord_id,
+                    inverse_of: :team_applications, optional: true
   has_many :application_answers, -> { order(:position) }, dependent: :destroy
 
   enum :status, { pending: 0, accepted: 1, rejected: 2 }, default: :pending

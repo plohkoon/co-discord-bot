@@ -73,9 +73,13 @@ class TeamsController < ApplicationController
     return if performed?
 
     attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
-                                         :recruiting, :closed_message,
+                                         :recruiting, :closed_message, :wowaudit_api_key,
                                          *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS, *Team::REMINDER_FIELDS)
     attrs.delete(:position) unless can_manage?
+    # A third-party credential for the whole team — Manage Server, not lead.
+    attrs.delete(:wowaudit_api_key) unless can_manage?
+    verify_wowaudit = attrs.key?(:wowaudit_api_key) &&
+                      attrs[:wowaudit_api_key].to_s.strip != @team.wowaudit_api_key.to_s
     resolve_text_fields(attrs)
 
     @team.assign_attributes(attrs.except(:team_category_id, :team_type_id))
@@ -90,13 +94,26 @@ class TeamsController < ApplicationController
       # The DM templates don't show in the directory, so a message-only save
       # skips the refresh.
       RosterRefreshJob.perform_later(guild_id: @guild.id) if roster_changed?
-      redirect_to guild_team_path(@guild, @team), notice: "Team updated."
+      notice = "Team updated."
+      notice = "#{notice} #{wowaudit_notice}" if verify_wowaudit
+      redirect_to guild_team_path(@guild, @team), notice: notice
     else
       redirect_to guild_team_path(@guild, @team), alert: @team.errors.full_messages.to_sentence
     end
   end
 
   private
+
+  # Checking the key on save is the only honest moment to do it: wowaudit gives
+  # no way to tell a good key from a bad one except by using it, so silently
+  # storing an unverified credential just moves the failure somewhere less
+  # obvious.
+  def wowaudit_notice
+    return "wowaudit disconnected." if @team.wowaudit_api_key.blank?
+
+    result = WowAudit::VerifyKey.call(@team)
+    result.ok? ? "wowaudit connected#{" to #{result.team_name}" if result.team_name}." : result.error
+  end
 
   # The columns the /team roster directory renders. Message templates aren't
   # among them, so a save that only touched those doesn't reflow the roster.

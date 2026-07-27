@@ -18,7 +18,7 @@ class ActionDispatch::IntegrationTest
   # Log in through the real OmniAuth callback (test mode), stubbing the Discord
   # guild fetch so no HTTP happens. Pass Guild records (or ids) to grant the
   # session Manage Server (manageable:) or plain membership (member:).
-  def sign_in_as(user, manageable: [], member: [])
+  def sign_in_as(user, manageable: [], member: [], connections: [])
     OmniAuth.config.test_mode = true
     OmniAuth.config.mock_auth[:discord] = OmniAuth::AuthHash.new(
       provider: "discord",
@@ -32,12 +32,39 @@ class ActionDispatch::IntegrationTest
       [],
       (Array(manageable) + Array(member)).map { |g| guild_id_of(g) }
     )
+    # Both remote calls the callback makes are stubbed — signing in must never
+    # touch the network.
     stub_singleton_method(Discord::ManageableGuilds, :call, result) do
-      get "/auth/discord/callback"
+      stub_singleton_method(Discord::Connections, :call, Array(connections)) do
+        get "/auth/discord/callback"
+      end
     end
   ensure
     OmniAuth.config.mock_auth[:discord] = nil
     OmniAuth.config.test_mode = false
+  end
+
+  # Drive the Battle.net link callback for an already signed-in session.
+  # `link` stands in for BattleNet::LinkAccount.call's Result.
+  def link_battle_net(uid:, battletag:, link:)
+    OmniAuth.config.test_mode = true
+    OmniAuth.config.mock_auth[:battle_net] = OmniAuth::AuthHash.new(
+      provider: "battle_net",
+      uid: uid.to_s,
+      info: { battletag: battletag },
+      credentials: { token: "bnet-test-token" },
+      extra: { raw_info: { "id" => uid, "battletag" => battletag } }
+    )
+    stub_singleton_method(BattleNet::LinkAccount, :call, link) do
+      get "/auth/battle_net/callback"
+    end
+  ensure
+    OmniAuth.config.mock_auth[:battle_net] = nil
+    OmniAuth.config.test_mode = false
+  end
+
+  def discord_connection(type:, id:, name:, verified: true)
+    Discord::Connections::Connection.new(type: type, id: id, name: name, verified: verified)
   end
 
   private

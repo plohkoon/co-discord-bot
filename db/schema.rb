@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -76,6 +76,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
     t.index ["team_id", "key"], name: "index_application_questions_on_team_id_and_key", unique: true
     t.index ["team_id", "position"], name: "index_application_questions_on_team_id_and_position"
     t.index ["team_id"], name: "index_application_questions_on_team_id"
+  end
+
+  create_table "battle_net_accounts", force: :cascade do |t|
+    t.bigint "battle_net_id", null: false
+    t.string "battle_tag"
+    t.datetime "characters_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "linked_at", null: false
+    t.string "region", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["battle_net_id"], name: "index_battle_net_accounts_on_battle_net_id"
+    t.index ["user_id", "battle_net_id"], name: "index_battle_net_accounts_on_user_id_and_battle_net_id", unique: true
+    t.index ["user_id"], name: "index_battle_net_accounts_on_user_id"
   end
 
   create_table "guilds", id: false, force: :cascade do |t|
@@ -203,6 +217,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
     t.bigint "team_role_id", null: false
     t.integer "team_type_id"
     t.datetime "updated_at", null: false
+    t.string "wowaudit_api_key"
+    t.string "wowaudit_team_name"
+    t.datetime "wowaudit_verified_at"
     t.index ["guild_id", "name"], name: "index_teams_on_guild_id_and_name", unique: true
     t.index ["guild_id"], name: "index_teams_on_guild_id"
     t.index ["team_category_id"], name: "index_teams_on_team_category_id"
@@ -210,14 +227,334 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.datetime "authenticated_at"
     t.string "avatar"
     t.datetime "created_at", null: false
+    t.string "discord_battle_net_id"
+    t.string "discord_battle_tag"
     t.bigint "discord_id", null: false
     t.string "global_name"
     t.text "installable_guilds"
     t.datetime "updated_at", null: false
     t.string "username", default: "", null: false
     t.index ["discord_id"], name: "index_users_on_discord_id", unique: true
+  end
+
+  create_table "warcraft_logs_rankings", force: :cascade do |t|
+    t.decimal "all_stars_points", precision: 10, scale: 2
+    t.integer "all_stars_rank"
+    t.integer "all_stars_rank_percent"
+    t.decimal "best_performance_average", precision: 6, scale: 2
+    t.datetime "created_at", null: false
+    t.integer "difficulty", null: false
+    t.datetime "fetched_at", null: false
+    t.decimal "median_performance_average", precision: 6, scale: 2
+    t.string "metric"
+    t.string "spec_name"
+    t.integer "total_kills"
+    t.datetime "updated_at", null: false
+    t.integer "wcl_zone_id", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["wow_character_id", "wcl_zone_id", "difficulty"], name: "index_wcl_rankings_on_character_zone_difficulty", unique: true
+    t.index ["wow_character_id"], name: "index_warcraft_logs_rankings_on_wow_character_id"
+  end
+
+  create_table "warcraft_logs_zones", force: :cascade do |t|
+    t.boolean "closed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.integer "expansion_id"
+    t.string "expansion_name"
+    t.string "kind", default: "raid", null: false
+    t.string "name"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.integer "wcl_id", null: false
+    t.index ["closed", "expansion_id"], name: "index_warcraft_logs_zones_on_closed_and_expansion_id"
+    t.index ["kind"], name: "index_warcraft_logs_zones_on_kind"
+    t.index ["wcl_id"], name: "index_warcraft_logs_zones_on_wcl_id", unique: true
+  end
+
+  create_table "wow_character_achievements", force: :cascade do |t|
+    t.bigint "blizzard_id", null: false
+    t.string "category", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["wow_character_id", "blizzard_id"], name: "idx_on_wow_character_id_blizzard_id_d5604c9dd7", unique: true
+    t.index ["wow_character_id", "category"], name: "idx_on_wow_character_id_category_574307f2d2"
+    t.index ["wow_character_id"], name: "index_wow_character_achievements_on_wow_character_id"
+  end
+
+  create_table "wow_character_profession_tiers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "known_recipe_count", default: 0
+    t.integer "max_skill_points"
+    t.string "name", null: false
+    t.integer "skill_points"
+    t.integer "tier_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_profession_id", null: false
+    t.index ["wow_character_profession_id", "tier_id"], name: "index_profession_tiers_on_profession_and_tier", unique: true
+    t.index ["wow_character_profession_id"], name: "index_profession_tiers_on_profession_id"
+  end
+
+  create_table "wow_character_professions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.string "name", null: false
+    t.integer "profession_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["name"], name: "index_wow_character_professions_on_name"
+    t.index ["wow_character_id", "profession_id"], name: "idx_on_wow_character_id_profession_id_5a42f076e3", unique: true
+    t.index ["wow_character_id"], name: "index_wow_character_professions_on_wow_character_id"
+  end
+
+  create_table "wow_character_pvp_ratings", force: :cascade do |t|
+    t.string "bracket", null: false
+    t.string "bracket_type", null: false
+    t.datetime "created_at", null: false
+    t.datetime "fetched_at", null: false
+    t.integer "lost", default: 0
+    t.integer "played", default: 0
+    t.integer "rating"
+    t.integer "season_id", null: false
+    t.string "spec_slug"
+    t.integer "tier_id"
+    t.datetime "updated_at", null: false
+    t.integer "weekly_lost", default: 0
+    t.integer "weekly_played", default: 0
+    t.integer "weekly_won", default: 0
+    t.integer "won", default: 0
+    t.integer "wow_character_id", null: false
+    t.index ["season_id", "bracket_type", "rating"], name: "idx_on_season_id_bracket_type_rating_7cc2935634"
+    t.index ["wow_character_id", "season_id", "bracket"], name: "index_pvp_ratings_on_character_season_bracket", unique: true
+    t.index ["wow_character_id"], name: "index_wow_character_pvp_ratings_on_wow_character_id"
+  end
+
+  create_table "wow_character_raids", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "fetched_at", null: false
+    t.integer "heroic_bosses_killed", default: 0
+    t.integer "mythic_bosses_killed", default: 0
+    t.integer "normal_bosses_killed", default: 0
+    t.string "raid_slug", null: false
+    t.string "summary"
+    t.integer "total_bosses"
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["wow_character_id", "raid_slug"], name: "index_wow_character_raids_on_wow_character_id_and_raid_slug", unique: true
+    t.index ["wow_character_id"], name: "index_wow_character_raids_on_wow_character_id"
+  end
+
+  create_table "wow_character_recipes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "recipe_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["recipe_id"], name: "index_wow_character_recipes_on_recipe_id"
+    t.index ["wow_character_id", "recipe_id"], name: "index_wow_character_recipes_on_wow_character_id_and_recipe_id", unique: true
+    t.index ["wow_character_id"], name: "index_wow_character_recipes_on_wow_character_id"
+  end
+
+  create_table "wow_character_seasons", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "fetched_at", null: false
+    t.decimal "score_all", precision: 7, scale: 1
+    t.decimal "score_dps", precision: 7, scale: 1
+    t.decimal "score_healer", precision: 7, scale: 1
+    t.decimal "score_tank", precision: 7, scale: 1
+    t.string "season_slug", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id", null: false
+    t.index ["season_slug"], name: "index_wow_character_seasons_on_season_slug"
+    t.index ["wow_character_id", "season_slug"], name: "idx_on_wow_character_id_season_slug_bfdce2c589", unique: true
+    t.index ["wow_character_id"], name: "index_wow_character_seasons_on_wow_character_id"
+  end
+
+  create_table "wow_characters", force: :cascade do |t|
+    t.datetime "achievements_refreshed_at"
+    t.string "active_spec"
+    t.integer "average_item_level"
+    t.integer "battle_net_account_id"
+    t.bigint "blizzard_id", null: false
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.string "faction"
+    t.string "guild_name"
+    t.integer "honor_level"
+    t.bigint "honorable_kills"
+    t.integer "item_level"
+    t.datetime "last_login_at"
+    t.integer "level"
+    t.datetime "missing_at"
+    t.decimal "mythic_rating", precision: 7, scale: 2
+    t.string "name", null: false
+    t.string "playable_class"
+    t.string "playable_race"
+    t.datetime "professions_refreshed_at"
+    t.datetime "pvp_refreshed_at"
+    t.datetime "raider_io_refreshed_at"
+    t.string "raider_io_role"
+    t.decimal "raider_io_score", precision: 7, scale: 1
+    t.string "realm", null: false
+    t.bigint "realm_id"
+    t.string "realm_slug", null: false
+    t.datetime "refreshed_at"
+    t.string "region"
+    t.datetime "updated_at", null: false
+    t.integer "user_id"
+    t.datetime "verified_at"
+    t.integer "warcraft_logs_id"
+    t.datetime "warcraft_logs_missing_at"
+    t.datetime "warcraft_logs_refreshed_at"
+    t.index ["achievements_refreshed_at"], name: "index_wow_characters_on_achievements_refreshed_at"
+    t.index ["battle_net_account_id"], name: "index_wow_characters_on_battle_net_account_id"
+    t.index ["blizzard_id"], name: "index_wow_characters_on_blizzard_id", unique: true
+    t.index ["raider_io_refreshed_at"], name: "index_wow_characters_on_raider_io_refreshed_at"
+    t.index ["refreshed_at"], name: "index_wow_characters_on_refreshed_at"
+    t.index ["user_id"], name: "index_wow_characters_on_user_id"
+  end
+
+  create_table "wow_encounters", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "journal_id", null: false
+    t.string "name"
+    t.string "normalized_name"
+    t.string "raid_slug"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.integer "wcl_zone_id"
+    t.index ["journal_id"], name: "index_wow_encounters_on_journal_id", unique: true
+    t.index ["normalized_name"], name: "index_wow_encounters_on_normalized_name"
+    t.index ["raid_slug"], name: "index_wow_encounters_on_raid_slug"
+    t.index ["wcl_zone_id"], name: "index_wow_encounters_on_wcl_zone_id"
+  end
+
+  create_table "wow_mythic_plus_cutoffs", force: :cascade do |t|
+    t.datetime "captured_at", null: false
+    t.datetime "created_at", null: false
+    t.string "faction", null: false
+    t.decimal "min_score", precision: 8, scale: 2, null: false
+    t.integer "population_count"
+    t.decimal "quantile", precision: 6, scale: 5
+    t.string "quantile_key", null: false
+    t.string "region", null: false
+    t.string "season_slug", null: false
+    t.integer "total_population"
+    t.datetime "updated_at", null: false
+    t.index ["season_slug", "region", "faction", "quantile_key", "min_score"], name: "index_mplus_cutoffs_on_season_region_faction_key_score", unique: true
+    t.index ["season_slug", "region", "quantile_key"], name: "idx_on_season_slug_region_quantile_key_b986ad4ef5"
+  end
+
+  create_table "wow_pvp_cutoffs", force: :cascade do |t|
+    t.string "achievement_name"
+    t.string "bracket_type", null: false
+    t.datetime "captured_at", null: false
+    t.datetime "created_at", null: false
+    t.integer "rating_cutoff", null: false
+    t.integer "season_id", null: false
+    t.integer "specialization_id"
+    t.string "specialization_name"
+    t.datetime "updated_at", null: false
+    t.index ["season_id", "bracket_type", "specialization_id", "rating_cutoff"], name: "index_pvp_cutoffs_on_season_bracket_spec_rating", unique: true
+  end
+
+  create_table "wow_pvp_seasons", force: :cascade do |t|
+    t.integer "blizzard_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "current", default: false, null: false
+    t.string "name"
+    t.datetime "starts_at"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["blizzard_id"], name: "index_wow_pvp_seasons_on_blizzard_id", unique: true
+  end
+
+  create_table "wow_pvp_tiers", force: :cascade do |t|
+    t.integer "blizzard_id", null: false
+    t.string "bracket_type"
+    t.datetime "created_at", null: false
+    t.integer "max_rating"
+    t.integer "min_rating"
+    t.string "name"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["blizzard_id"], name: "index_wow_pvp_tiers_on_blizzard_id", unique: true
+  end
+
+  create_table "wow_raids", force: :cascade do |t|
+    t.integer "boss_count"
+    t.datetime "created_at", null: false
+    t.integer "expansion_id"
+    t.string "name"
+    t.string "short_name"
+    t.string "slug", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_wow_raids_on_slug", unique: true
+  end
+
+  create_table "wow_recipes", force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "profession_id"
+    t.string "profession_name"
+    t.bigint "recipe_id", null: false
+    t.integer "skill_tier_id"
+    t.string "skill_tier_name"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_wow_recipes_on_name"
+    t.index ["profession_id"], name: "index_wow_recipes_on_profession_id"
+    t.index ["recipe_id"], name: "index_wow_recipes_on_recipe_id", unique: true
+    t.index ["skill_tier_id"], name: "index_wow_recipes_on_skill_tier_id"
+  end
+
+  create_table "wow_seasons", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ends_at"
+    t.integer "expansion_id"
+    t.string "name"
+    t.boolean "ranked", default: false, null: false
+    t.string "short_name"
+    t.string "slug", null: false
+    t.datetime "starts_at"
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["ranked", "ends_at"], name: "index_wow_seasons_on_ranked_and_ends_at"
+    t.index ["slug"], name: "index_wow_seasons_on_slug", unique: true
+  end
+
+  create_table "wow_token_prices", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "price", null: false
+    t.datetime "recorded_at", null: false
+    t.string "region", null: false
+    t.datetime "updated_at", null: false
+    t.index ["region", "recorded_at"], name: "index_wow_token_prices_on_region_and_recorded_at", unique: true
+  end
+
+  create_table "wowaudit_characters", force: :cascade do |t|
+    t.string "character_class"
+    t.datetime "created_at", null: false
+    t.bigint "guild_id", null: false
+    t.string "name", null: false
+    t.string "realm"
+    t.string "role"
+    t.datetime "synced_at", null: false
+    t.integer "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "wow_character_id"
+    t.integer "wowaudit_id", null: false
+    t.index ["guild_id", "name"], name: "index_wowaudit_characters_on_guild_id_and_name"
+    t.index ["guild_id"], name: "index_wowaudit_characters_on_guild_id"
+    t.index ["team_id", "wowaudit_id"], name: "index_wowaudit_characters_on_team_id_and_wowaudit_id", unique: true
+    t.index ["team_id"], name: "index_wowaudit_characters_on_team_id"
+    t.index ["wow_character_id"], name: "index_wowaudit_characters_on_wow_character_id"
   end
 
   add_foreign_key "absence_digests", "guilds"
@@ -229,6 +566,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
   add_foreign_key "application_answers", "team_applications"
   add_foreign_key "application_questions", "guilds"
   add_foreign_key "application_questions", "teams"
+  add_foreign_key "battle_net_accounts", "users"
   add_foreign_key "membership_notes", "guilds"
   add_foreign_key "membership_notes", "team_memberships"
   add_foreign_key "team_applications", "guilds"
@@ -243,4 +581,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_120000) do
   add_foreign_key "teams", "guilds"
   add_foreign_key "teams", "team_categories"
   add_foreign_key "teams", "team_types"
+  add_foreign_key "warcraft_logs_rankings", "wow_characters"
+  add_foreign_key "wow_character_achievements", "wow_characters"
+  add_foreign_key "wow_character_profession_tiers", "wow_character_professions"
+  add_foreign_key "wow_character_professions", "wow_characters"
+  add_foreign_key "wow_character_pvp_ratings", "wow_characters"
+  add_foreign_key "wow_character_raids", "wow_characters"
+  add_foreign_key "wow_character_recipes", "wow_characters"
+  add_foreign_key "wow_character_seasons", "wow_characters"
+  add_foreign_key "wow_characters", "battle_net_accounts"
+  add_foreign_key "wow_characters", "users"
+  add_foreign_key "wowaudit_characters", "guilds"
+  add_foreign_key "wowaudit_characters", "teams"
+  add_foreign_key "wowaudit_characters", "wow_characters"
 end

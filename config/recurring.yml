@@ -6,11 +6,50 @@
 # Application review reminders ARE here: one hourly sweep that does each guild's
 # work when that guild's own clock reaches ReviewDigestSweepJob::DIGEST_HOUR.
 # Nothing is scheduled per application, so nothing can go stale.
+# WoW character data (ilvl, M+ score) is refreshed hourly off the Blizzard app
+# token — no user OAuth involved, so it keeps running between link ceremonies.
+# The sweep caps its own batch; stale characters wait for the next pass.
 
 development:
   review_digest_sweep:
     class: ReviewDigestSweepJob
     schedule: every hour at minute 5
+
+  wow_character_sweep:
+    class: WowCharacterSweepJob
+    schedule: every hour at minute 20
+
+  raider_io_static_data:
+    class: RaiderIoStaticDataJob
+    schedule: every sunday at 4am
+
+  warcraft_logs_zones:
+    class: WarcraftLogsZonesJob
+    schedule: every sunday at 4:30am
+
+  wowaudit_roster_sync:
+    class: WowauditRosterSyncJob
+    schedule: every day at 5am
+
+  wow_token_price:
+    class: WowTokenPriceJob
+    schedule: every hour at minute 40
+
+  pvp_reference_sync:
+    class: PvpReferenceSyncJob
+    schedule: every day at 6am
+
+  raider_io_cutoffs:
+    class: RaiderIoCutoffsJob
+    schedule: every day at 6:30am
+
+  wow_achievements_sweep:
+    class: WowCharacterAchievementsSweepJob
+    schedule: every sunday at 7am
+
+  wow_recipe_catalog:
+    class: WowRecipeCatalogJob
+    schedule: every day at 7:30am
 
 production:
   clear_solid_queue_finished_jobs:
@@ -20,3 +59,39 @@ production:
   review_digest_sweep:
     class: ReviewDigestSweepJob
     schedule: every hour at minute 5
+
+  wow_character_sweep:
+    class: WowCharacterSweepJob
+    schedule: every hour at minute 20
+
+  raider_io_static_data:
+    class: RaiderIoStaticDataJob
+    schedule: every sunday at 4am
+
+  warcraft_logs_zones:
+    class: WarcraftLogsZonesJob
+    schedule: every sunday at 4:30am
+
+  wowaudit_roster_sync:
+    class: WowauditRosterSyncJob
+    schedule: every day at 5am
+
+  wow_token_price:
+    class: WowTokenPriceJob
+    schedule: every hour at minute 40
+
+  pvp_reference_sync:
+    class: PvpReferenceSyncJob
+    schedule: every day at 6am
+
+  raider_io_cutoffs:
+    class: RaiderIoCutoffsJob
+    schedule: every day at 6:30am
+
+  wow_achievements_sweep:
+    class: WowCharacterAchievementsSweepJob
+    schedule: every sunday at 7am
+
+  wow_recipe_catalog:
+    class: WowRecipeCatalogJob
+    schedule: every day at 7:30am
