@@ -17,6 +17,14 @@ class WowCharactersController < ApplicationController
     end
   end
 
+  # An explicit choice of main. Inference never overrides this afterwards —
+  # see WowCharacters::SetMain.
+  def make_main
+    character = current_user.wow_characters.find(params[:id])
+    WowCharacters::SetMain.set(current_user, character)
+    redirect_to account_path, notice: "#{character.full_name} is now your main."
+  end
+
   # Releasing a claim only ever removes the assertion. A verified character
   # belongs to the Battle.net link and is removed by unlinking that, not here.
   def destroy

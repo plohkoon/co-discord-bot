@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_280000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -117,6 +117,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
   end
 
   create_table "team_applications", force: :cascade do |t|
+    t.string "character_input"
     t.datetime "created_at", null: false
     t.datetime "decided_at"
     t.bigint "decided_by_discord_id"
@@ -133,12 +134,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
     t.integer "team_membership_id"
     t.datetime "timeline_started_at"
     t.datetime "updated_at", null: false
+    t.integer "wow_character_id"
     t.index ["discord_user_id"], name: "index_team_applications_on_discord_user_id"
     t.index ["guild_id"], name: "index_team_applications_on_guild_id"
     t.index ["team_id", "discord_user_id", "status"], name: "idx_on_team_id_discord_user_id_status_801561e00c"
     t.index ["team_id", "discord_user_id"], name: "index_team_applications_one_pending_per_user", unique: true, where: "status = 0"
     t.index ["team_id"], name: "index_team_applications_on_team_id"
     t.index ["team_membership_id"], name: "index_team_applications_on_team_membership_id"
+    t.index ["wow_character_id"], name: "index_team_applications_on_wow_character_id"
   end
 
   create_table "team_categories", force: :cascade do |t|
@@ -161,10 +164,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
     t.integer "status", default: 0, null: false
     t.integer "team_id", null: false
     t.datetime "updated_at", null: false
+    t.integer "wow_character_id"
     t.index ["guild_id"], name: "index_team_memberships_on_guild_id"
     t.index ["team_id", "discord_user_id"], name: "index_team_memberships_on_team_id_and_discord_user_id", unique: true
     t.index ["team_id", "status"], name: "index_team_memberships_on_team_id_and_status"
     t.index ["team_id"], name: "index_team_memberships_on_team_id"
+    t.index ["wow_character_id"], name: "index_team_memberships_on_wow_character_id"
   end
 
   create_table "team_officers", force: :cascade do |t|
@@ -193,6 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
     t.boolean "active", default: true, null: false
     t.text "apply_response"
     t.text "closed_message"
+    t.boolean "collect_character", default: true, null: false
     t.datetime "created_at", null: false
     t.text "current_needs"
     t.text "date_and_time"
@@ -206,6 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
     t.integer "position", default: 0, null: false
     t.text "progression"
     t.boolean "recruiting", default: true, null: false
+    t.string "region", default: "us", null: false
     t.boolean "remind_ping", default: true, null: false
     t.text "requirements"
     t.bigint "review_channel_id", null: false
@@ -235,9 +242,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
     t.bigint "discord_id", null: false
     t.string "global_name"
     t.text "installable_guilds"
+    t.integer "main_wow_character_id"
     t.datetime "updated_at", null: false
     t.string "username", default: "", null: false
     t.index ["discord_id"], name: "index_users_on_discord_id", unique: true
+    t.index ["main_wow_character_id"], name: "index_users_on_main_wow_character_id"
   end
 
   create_table "warcraft_logs_rankings", force: :cascade do |t|
@@ -572,15 +581,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_260000) do
   add_foreign_key "team_applications", "guilds"
   add_foreign_key "team_applications", "team_memberships"
   add_foreign_key "team_applications", "teams"
+  add_foreign_key "team_applications", "wow_characters", on_delete: :nullify
   add_foreign_key "team_categories", "guilds"
   add_foreign_key "team_memberships", "guilds"
   add_foreign_key "team_memberships", "teams"
+  add_foreign_key "team_memberships", "wow_characters", on_delete: :nullify
   add_foreign_key "team_officers", "guilds"
   add_foreign_key "team_officers", "teams"
   add_foreign_key "team_types", "guilds"
   add_foreign_key "teams", "guilds"
   add_foreign_key "teams", "team_categories"
   add_foreign_key "teams", "team_types"
+  add_foreign_key "users", "wow_characters", column: "main_wow_character_id", on_delete: :nullify
   add_foreign_key "warcraft_logs_rankings", "wow_characters"
   add_foreign_key "wow_character_achievements", "wow_characters"
   add_foreign_key "wow_character_profession_tiers", "wow_character_professions"

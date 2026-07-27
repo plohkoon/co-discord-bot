@@ -62,6 +62,14 @@ class Team < ApplicationRecord
   # --- wowaudit ---
   # Keyed per raid team, which is why the credential lives here and not in ENV.
 
+  # Discord allows five inputs in a modal, total. When the team asks for a
+  # character that costs one of them, so the question limit drops to four.
+  def question_limit
+    ApplicationQuestion::MAX_PER_TEAM - (collect_character? ? 1 : 0)
+  end
+
+  def collect_character? = self[:collect_character] && application_questions.count < ApplicationQuestion::MAX_PER_TEAM
+
   def wowaudit_configured? = wowaudit_api_key.present?
 
   def wowaudit_verified? = wowaudit_verified_at.present?

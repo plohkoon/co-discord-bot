@@ -92,6 +92,12 @@
                       </div>
                     <% end %>
                   <% end %>
+                  <% if current_user.main_wow_character_id == character.id %>
+                    <%= render(Ui::BadgeComponent.new(variant: :gold)) { "main" } %>
+                  <% else %>
+                    <%= button_to "Set main", make_main_wow_character_path(character),
+                          class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+                  <% end %>
                   <%= link_to "Armory", character.armory_url, target: "_blank", rel: "noopener",
                         class: "text-xs text-muted-foreground hover:text-foreground transition shrink-0" %>
                 </div>
@@ -158,6 +164,12 @@
                       character.mythic_score && "#{character.mythic_score} M+" ].compact.join(" · ") %>
               </div>
             </div>
+            <% if current_user.main_wow_character_id == character.id %>
+              <%= render(Ui::BadgeComponent.new(variant: :gold)) { "main" } %>
+            <% else %>
+              <%= button_to "Set main", make_main_wow_character_path(character),
+                    class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+            <% end %>
             <%= button_to "Release", wow_character_path(character), method: :delete,
                   form: { data: { turbo_confirm: "Release your claim on #{character.full_name}?" } },
                   class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>

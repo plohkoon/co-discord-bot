@@ -42,6 +42,10 @@ module WowCharacters
       character.claimed_at ||= @now
       character.save!
 
+      # With one character there is no other sensible main; with several this
+      # is a no-op, since it only ever fills a gap.
+      SetMain.ensure(@user)
+
       Result.new(character: character, status: existing ? :already_yours : :claimed)
     rescue BattleNet::Client::NotFound
       failure("No character called #{@name} on #{@realm_slug.titleize} (#{@region.upcase}).")

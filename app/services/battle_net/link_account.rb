@@ -109,6 +109,10 @@ module BattleNet
       end
 
       Rails.logger.info("[web] linked Battle.net #{battle_tag} (#{region}) to user #{@user.id}: #{attributes.size} characters")
+      # Fifty characters just arrived and none of them is flagged — nominate a
+      # main so downstream surfaces have something to lead with. Never overrides
+      # a choice the person already made.
+      WowCharacters::SetMain.ensure(@user)
       # Fill in ilvl/spec/M+ in the background so the freshly linked characters
       # aren't blank until the hourly sweep comes round. Enqueued after the
       # transaction commits — the jobs read these rows.
@@ -145,6 +149,7 @@ module BattleNet
     # claim rather than deleted — losing the proof shouldn't also lose the
     # assertion, or their data would silently disappear from an application
     # they'd already submitted.
+    #
     # Queried by id rather than through account.wow_characters: sync_characters
     # creates rows via WowCharacter directly (it has to look them up globally),
     # so the association's cache never learns about them.

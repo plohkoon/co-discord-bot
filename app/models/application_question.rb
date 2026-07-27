@@ -33,8 +33,16 @@ class ApplicationQuestion < ApplicationRecord
   def within_team_limit
     return if team.blank?
 
-    if team.application_questions.where.not(id: id).count >= MAX_PER_TEAM
-      errors.add(:base, "a team can have at most #{MAX_PER_TEAM} application questions")
-    end
+    # The team's own limit, not the raw modal cap: asking for a character costs
+    # one of Discord's five slots, so a team that collects one has room for four
+    # questions.
+    limit = team.question_limit
+    return if team.application_questions.where.not(id: id).count < limit
+
+    errors.add(:base, if limit < MAX_PER_TEAM
+      "a team that asks for a character can have at most #{limit} application questions"
+    else
+      "a team can have at most #{limit} application questions"
+    end)
   end
 end

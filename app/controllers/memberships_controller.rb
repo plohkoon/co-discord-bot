@@ -10,6 +10,18 @@ class MembershipsController < ApplicationController
   end
 
   # Pull the team role and archive — the web mirror of /team member remove.
+  # A lead sets which character this member is active as on their team. Scoped
+  # to characters the MEMBER owns — a lead can correct a typo or a swap, not
+  # attribute someone else's character to them.
+  def set_character
+    membership = @team.team_memberships.find(params[:id])
+    character = membership.user&.wow_characters&.find_by(id: params[:wow_character_id])
+
+    membership.update!(wow_character: character)
+    redirect_to guild_team_membership_path(@guild, @team, membership),
+                notice: character ? "Active character set to #{character.full_name}." : "Active character cleared."
+  end
+
   def remove
     if @membership.archived?
       return redirect_to guild_team_membership_path(@guild, @team, @membership),

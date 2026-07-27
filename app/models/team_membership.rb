@@ -11,6 +11,10 @@ class TeamMembership < ApplicationRecord
   # "unknown", never as "has nothing".
   belongs_to :user, foreign_key: :discord_user_id, primary_key: :discord_id,
                     inverse_of: :team_memberships, optional: true
+  # The character they play ON THIS TEAM. Distinct from their main because it
+  # genuinely differs — people main a tank and raid as a healer, or bring an alt
+  # to the second team. Seeded from the application, changeable by the leads.
+  belongs_to :wow_character, optional: true
   has_many :team_applications, dependent: :nullify
   has_many :membership_notes, -> { order(created_at: :desc) }, dependent: :destroy
   has_many :absences, dependent: :nullify

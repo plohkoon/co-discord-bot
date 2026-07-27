@@ -11,6 +11,10 @@ class User < ApplicationRecord
   # Direct, not through battle_net_accounts: a character can be claimed without
   # any Battle.net link at all.
   has_many :wow_characters, dependent: :nullify
+  # Which of them is "them". A pointer rather than a flag on the character, so
+  # "exactly one" is structural. nullify, not destroy: releasing a main should
+  # clear the pointer, never delete the person.
+  belongs_to :main_wow_character, class_name: "WowCharacter", optional: true
 
   # --- The Discord bridge ---
   #
@@ -66,6 +70,10 @@ class User < ApplicationRecord
 
   # Has this person ever actually signed in? A shadow record can hold characters
   # and join to memberships, but it has proved nothing.
+  # Their main, or the best guess if they've never chosen — never nil when they
+  # own anything, so callers don't each invent a fallback.
+  def main_character = WowCharacters::SetMain.ensure(self)
+
   def authenticated? = authenticated_at.present?
 
   def shadow? = !authenticated?

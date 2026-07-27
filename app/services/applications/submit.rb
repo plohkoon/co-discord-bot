@@ -27,7 +27,11 @@ module Applications
           team: @team,
           discord_user_id: user_id,
           discord_username: username,
-          source: :applied
+          source: :applied,
+          # Stored verbatim and resolved out of band — see
+          # ApplicationCharacterJob. A typo must never cost someone their
+          # application, so nothing here validates it.
+          character_input: character_input
         )
 
         @team.application_questions.ordered.each_with_index do |question, i|
@@ -55,6 +59,13 @@ module Applications
         description: "#{application.applicant_mention} applied to **#{@team.name}**.",
         color: 0x5865F2
       )
+      # Resolving costs a Blizzard round trip, so it happens after the commit
+      # and out of band: the officers are already notified and the applicant
+      # already has their acknowledgement.
+      if application.character_input.present?
+        ApplicationCharacterJob.perform_later(application_id: application.id,
+                                              guild_id: application.guild_id)
+      end
       ConfirmationDmJob.perform_later(
         guild_id: application.guild_id,
         team_id: @team.id,
@@ -70,6 +81,8 @@ module Applications
     private
 
     def user_id = @event.user.id
+
+    def character_input = @event.value("character").to_s.strip.presence
 
     def username
       user = @event.user
