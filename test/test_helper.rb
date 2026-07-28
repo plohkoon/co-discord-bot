@@ -2,6 +2,21 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 
+# dotenv-rails loads .env in the test environment too, so a developer with
+# working credentials runs a different suite from CI — one where every external
+# integration is configured. That is how five failures reached CI green-locally.
+#
+# Every third-party integration therefore starts UNCONFIGURED here, and tests
+# that need credentials set them explicitly (see BattleNet::ClientTest#with_env).
+# APP_URL goes too: it changes generated URLs, so leaving it set makes link
+# assertions depend on the developer's machine.
+%w[
+  BLIZZARD_CLIENT_ID BLIZZARD_CLIENT_SECRET
+  WARCRAFTLOGS_CLIENT_ID WARCRAFTLOGS_CLIENT_SECRET
+  RAIDER_IO_API_KEY
+  APP_URL
+].each { |key| ENV.delete(key) }
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers

@@ -35,9 +35,10 @@ class ApplicationCharacterJob < ApplicationJob
       # a definite answer for everything reading the application.
       application.update!(character_resolved_at: Time.current)
 
-      # The review message was posted saying "Loading raider data…" — repaint it
-      # now that the answer is known, whichever way it went. Without this an
-      # officer would sit looking at a spinner forever.
+      # The review message was posted saying "Loading raider data…". Repaint it
+      # now that resolution is settled — a typo becomes "Cannot load raider
+      # data" immediately, and a success keeps saying "loading" until the
+      # refresh lands and repaints again.
       Applications::RefreshReviewMessage.call(application.reload)
     end
   end
@@ -51,21 +52,13 @@ class ApplicationCharacterJob < ApplicationJob
     application.team_membership&.update!(wow_character: character)
     # First character someone gets becomes their main; never overrides a choice.
     WowCharacters::SetMain.ensure(user)
-    # Gathered INLINE rather than enqueued: we are already in a background job,
-    # and the review message repaints immediately after. Enqueuing would repaint
-    # an empty summary and leave the officer waiting for a second edit that
-    # nothing guarantees.
-    gather(character)
+    # The refresh repaints the review message itself once it has data (see
+    # WowCharacterRefreshJob), so this doesn't have to gather inline to make the
+    # summary useful — and shouldn't, since doing so would drag four external
+    # services into the critical path of resolving a name.
+    WowCharacterRefreshJob.perform_later(character.id)
 
     Rails.logger.info("[wow] application #{application.id} resolved to #{character.full_name}")
-  end
-
-  # One character's data failing must not cost the resolution — the claim
-  # stands, and the hourly sweep will fill in what's missing.
-  def gather(character)
-    WowCharacterRefreshJob.perform_now(character.id)
-  rescue StandardError => e
-    Rails.logger.warn("[wow] gathering #{character.full_name} failed: #{e.class}: #{e.message}")
   end
 
   # Best-effort, like every other DM here: a closed DM is swallowed rather than

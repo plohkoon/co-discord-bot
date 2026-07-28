@@ -136,6 +136,49 @@ class WowCharacterRefreshJobTest < ActiveJob::TestCase
     assert_equal 42, character.honor_level
   end
 
+  # An application posts saying "Loading raider data…" and waits on exactly
+  # this. The refresh is what knows when there is something to show, so it —
+  # not the resolver — is what repaints.
+  test "a pending application riding on this character is repainted" do
+    guild = Guild.create!(id: 777_000_111_222_333_444, name: "Raid Server")
+    repainted = []
+    ActsAsTenant.with_tenant(guild) do
+      team = Team.create!(name: "Alpha", team_role_id: 1, officer_role_id: 2, review_channel_id: 3)
+      TeamApplication.create!(team: team, discord_user_id: users(:member).discord_id,
+                              discord_username: "applicant", character_input: "Thrall-Sargeras",
+                              wow_character: character, character_resolved_at: Time.current)
+    end
+
+    original = Applications::RefreshReviewMessage.method(:call)
+    Applications::RefreshReviewMessage.define_singleton_method(:call) { |app, **| repainted << app.id }
+    WowCharacterRefreshJob.perform_now(character.id, client: FakeClient.new, raider_io: FakeRaiderIo.new)
+
+    assert_equal 1, repainted.size
+  ensure
+    Applications::RefreshReviewMessage.define_singleton_method(:call, original) if original
+  end
+
+  # A settled application's message is already final; repainting it would be
+  # noise, and the hourly sweep would do it forever.
+  test "a decided application is not repainted" do
+    guild = Guild.create!(id: 777_000_111_222_333_444, name: "Raid Server")
+    repainted = []
+    ActsAsTenant.with_tenant(guild) do
+      team = Team.create!(name: "Alpha", team_role_id: 1, officer_role_id: 2, review_channel_id: 3)
+      TeamApplication.create!(team: team, discord_user_id: users(:member).discord_id,
+                              discord_username: "applicant", wow_character: character,
+                              status: :accepted)
+    end
+
+    original = Applications::RefreshReviewMessage.method(:call)
+    Applications::RefreshReviewMessage.define_singleton_method(:call) { |app, **| repainted << app.id }
+    WowCharacterRefreshJob.perform_now(character.id, client: FakeClient.new, raider_io: FakeRaiderIo.new)
+
+    assert_empty repainted
+  ensure
+    Applications::RefreshReviewMessage.define_singleton_method(:call, original) if original
+  end
+
   test "professions land in the same pass" do
     WowCharacterRefreshJob.perform_now(character.id, client: FakeClient.new, raider_io: FakeRaiderIo.new)
 

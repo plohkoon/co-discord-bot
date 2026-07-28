@@ -10,7 +10,10 @@ class WowTokenPriceJob < ApplicationJob
   retry_on BattleNet::Client::Error, wait: :polynomially_longer, attempts: 3
 
   def perform(regions: BattleNet::Client::REGIONS, client_for: nil)
-    return unless BattleNet::Client.configured?
+    # An injected client bypasses the credential check, as in every other job
+    # here. Without that this was untestable without real credentials — and so
+    # passed locally and failed in CI.
+    return unless client_for || BattleNet::Client.configured?
 
     Array(regions).each do |region|
       client = client_for ? client_for.call(region) : BattleNet::Client.app(region: region)

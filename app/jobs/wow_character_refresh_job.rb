@@ -21,6 +21,7 @@ class WowCharacterRefreshJob < ApplicationJob
     enrich_from_warcraft_logs(character, warcraft_logs)
     enrich_from_pvp(character, pvp || client)
     enrich_from_professions(character, professions || client)
+    repaint_pending_applications(character)
   rescue BattleNet::Client::Unauthorized
     # The cached app token was revoked or rotated. Drop it here — before the
     # retry, not after retries are exhausted — so the next attempt mints a fresh
@@ -30,6 +31,24 @@ class WowCharacterRefreshJob < ApplicationJob
   end
 
   private
+
+  # An application showing "Loading raider data…" is waiting on exactly this —
+  # so the refresh, not the resolver, is what knows when there is something to
+  # show. Doing it here also keeps a long-open application's summary current
+  # for free, every time the hourly sweep touches the character.
+  #
+  # TeamApplication is guild-scoped; read outside a tenant it is unscoped, which
+  # is what lets one character's refresh reach applications in any guild.
+  def repaint_pending_applications(character)
+    TeamApplication.where(wow_character_id: character.id).pending.find_each do |application|
+      guild = Guild.find_by(id: application.guild_id) or next
+
+      ActsAsTenant.with_tenant(guild) { Applications::RefreshReviewMessage.call(application) }
+    end
+  rescue StandardError => e
+    # A repaint must never cost the data that was just gathered.
+    Rails.logger.warn("[wow] repainting applications for #{character.full_name} failed: #{e.class}: #{e.message}")
+  end
 
   # Raider.io adds raid progression and the role split — real value, but strictly
   # supplementary. It is deliberately NOT allowed to fail the job: Blizzard's
