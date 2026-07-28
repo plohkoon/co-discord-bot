@@ -1,19 +1,41 @@
 # See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+#
+# Deploys only after CI has gone green on main. Previously this triggered on
+# `push` alongside CI, so the two raced and a merge with failing tests shipped
+# anyway. workflow_run is the only way to depend on another workflow — `needs:`
+# can't cross workflow files.
 
 name: Fly Deploy
 permissions:
   contents: read
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+    # The branch of the CI run that finished, not of this workflow.
+    branches: [ main ]
+
 jobs:
   deploy:
     name: Deploy app
+    # workflow_run fires for failed runs too, so the conclusion has to be
+    # checked explicitly. The event check keeps a green *pull_request* run from
+    # ever reaching here: this job has the deploy token, and PR code must not
+    # be able to trigger it.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency:
+      group: deploy-group
+      cancel-in-progress: false # let a running deploy finish; deploys are cumulative
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Deploy the exact commit CI validated. Without this, checkout takes
+          # the tip of the default branch, which may already have moved on to a
+          # commit nothing has tested.
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
         env:

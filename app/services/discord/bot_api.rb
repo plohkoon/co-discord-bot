@@ -35,6 +35,14 @@ module Discord
 
     def guild_member(guild_id, user_id) = get("/guilds/#{guild_id}/members/#{user_id}")
 
+    # Native scheduled events. discordrb 3.8 models none of this, so the bot
+    # reads them straight off the API (the gateway side is a raw handler in
+    # CoBot::Runner). Read-only by design — Discord's Events tab owns the
+    # event itself; co-bot only mirrors it into a channel.
+    def guild_scheduled_events(guild_id) = get("/guilds/#{guild_id}/scheduled-events")
+
+    def guild_scheduled_event(guild_id, event_id) = get("/guilds/#{guild_id}/scheduled-events/#{event_id}")
+
     # Page through the guild's full member list — the REST equivalent of
     # gateway member chunking, usable from web/job processes. Yields each raw
     # member hash ({"user" => {...}, "roles" => [...], ...}).

@@ -9,6 +9,17 @@ module CoBot
     # predates it, so it's passed as a raw bit; without it (and the matching
     # portal toggle) message.content arrives empty and no message action fires.
     MESSAGE_CONTENT_INTENT = 1 << 15
+    # GUILD_SCHEDULED_EVENTS — not privileged (no portal toggle), but discordrb
+    # 3.8 predates it too, so it's another raw bit. Gates the four
+    # GUILD_SCHEDULED_EVENT_* dispatches below.
+    SCHEDULED_EVENTS_INTENT = 1 << 16
+
+    # discordrb 3.8 has no scheduled-event support at all, so these arrive as
+    # UnknownEvent/RawEvent dispatches and we read the raw payload hash.
+    # USER_ADD/USER_REMOVE (the Interested list) are deliberately ignored —
+    # nothing co-bot posts depends on who RSVP'd.
+    SCHEDULED_EVENT_DISPATCH = /\AGUILD_SCHEDULED_EVENT_(CREATE|UPDATE|DELETE)\z/
+    SCHEDULED_EVENT_UPSERTS = %w[GUILD_SCHEDULED_EVENT_CREATE GUILD_SCHEDULED_EVENT_UPDATE].freeze
 
     class << self
       def instance = @instance ||= new
@@ -71,7 +82,9 @@ module CoBot
       token = ENV["DISCORD_BOT_TOKEN"].to_s
       raise "DISCORD_BOT_TOKEN is not set" if token.strip.empty?
 
-      @bot = Discordrb::Bot.new(token: token, intents: [ :servers, :server_members, :server_messages, MESSAGE_CONTENT_INTENT ])
+      @bot = Discordrb::Bot.new(token: token,
+                                intents: [ :servers, :server_members, :server_messages,
+                                           MESSAGE_CONTENT_INTENT, SCHEDULED_EVENTS_INTENT ])
       install
     end
 
@@ -102,6 +115,8 @@ module CoBot
       @bot.message do |event|
         self.class.handle("message") { dispatch_message(event) }
       end
+
+      install_scheduled_events
 
       @bot.member_update do |event|
         self.class.handle("member_update") { Memberships::RoleSync.reconcile(server: event.server, member: event.user, roles: event.roles) }
@@ -144,6 +159,27 @@ module CoBot
         matcher = /\A#{Regexp.escape(spec[:key])}:/
         handler = ->(event) { dispatch_component(klass, event) }
         spec[:kind] == :modal ? @bot.modal_submit(custom_id: matcher, &handler) : @bot.button(custom_id: matcher, &handler)
+      end
+    end
+
+    # Native scheduled events. Registering any `raw` handler makes discordrb
+    # build a RawEvent for *every* dispatch, so this is one handler filtered by
+    # type rather than three.
+    def install_scheduled_events
+      @bot.raw(type: SCHEDULED_EVENT_DISPATCH) do |event|
+        self.class.handle("scheduled_event") { dispatch_scheduled_event(event.type.to_s, event.data) }
+      end
+    end
+
+    # The raw payload carries its own guild_id (there's no `event.server` on a
+    # RawEvent), and the row exists for any guild the bot is actually in.
+    def dispatch_scheduled_event(type, data)
+      guild = Guild.installed.find_by(id: data["guild_id"].to_i) or return
+
+      if SCHEDULED_EVENT_UPSERTS.include?(type)
+        GuildEvents::Sync.call(guild: guild, payload: data)
+      else
+        GuildEvents::Sync.deleted(guild: guild, discord_event_id: data["id"].to_i)
       end
     end
 
