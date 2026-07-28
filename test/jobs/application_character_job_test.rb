@@ -157,5 +157,4 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
       ApplicationCharacterJob.perform_now(application_id: 1, guild_id: 999_999)
     end
   end
-
 end
