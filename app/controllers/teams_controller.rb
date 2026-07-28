@@ -78,6 +78,9 @@ class TeamsController < ApplicationController
     attrs.delete(:position) unless can_manage?
     # A third-party credential for the whole team — Manage Server, not lead.
     attrs.delete(:wowaudit_api_key) unless can_manage?
+    # The form never renders the stored key back, so a blank field means "leave
+    # it alone" — not "clear it". Disconnecting is its own explicit button.
+    attrs.delete(:wowaudit_api_key) if attrs[:wowaudit_api_key] == "" && !params[:clear_wowaudit]
     verify_wowaudit = attrs.key?(:wowaudit_api_key) &&
                       attrs[:wowaudit_api_key].to_s.strip != @team.wowaudit_api_key.to_s
     resolve_text_fields(attrs)

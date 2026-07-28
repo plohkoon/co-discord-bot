@@ -79,10 +79,17 @@
         class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
     <label class="block">
       <span class="text-xs text-muted-foreground">wowaudit API key</span>
-      <%= f.password_field :wowaudit_api_key, value: @team.wowaudit_api_key,
-            autocomplete: "off", placeholder: "Paste the key from wowaudit", class: "field w-full mt-1" %>
+      <%# Never rendered back into the page — a stored credential has no reason
+          to sit in HTML source. Blank means "leave it as it is". %>
+      <%= f.password_field :wowaudit_api_key, value: nil, autocomplete: "off",
+            placeholder: @team.wowaudit_configured? ? "Saved — type a new key to replace it" : "Paste the key from wowaudit",
+            class: "field w-full mt-1" %>
     </label>
     <% if @team.wowaudit_configured? %>
+      <%= button_to "Disconnect wowaudit", guild_team_path(@guild, @team), method: :patch,
+            params: { team: { wowaudit_api_key: "" }, clear_wowaudit: true },
+            form: { data: { turbo_confirm: "Disconnect wowaudit from #{@team.name}?" } },
+            class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
       <p class="text-xs <%= @team.wowaudit_verified? ? "text-emerald-300" : "text-light-red" %>">
         <% if @team.wowaudit_verified? %>
           Connected<%= " to #{@team.wowaudit_team_name}" if @team.wowaudit_team_name.present? %> ·
