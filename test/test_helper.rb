@@ -25,6 +25,47 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    # Credentials for the integrations, keyed by service. Values are obviously
+    # fake — anything reaching the network with these is a test that forgot to
+    # inject a client.
+    SERVICE_CREDENTIALS = {
+      blizzard: { "BLIZZARD_CLIENT_ID" => "test-blizzard-id",
+                  "BLIZZARD_CLIENT_SECRET" => "test-blizzard-secret" },
+      warcraft_logs: { "WARCRAFTLOGS_CLIENT_ID" => "test-wcl-id",
+                       "WARCRAFTLOGS_CLIENT_SECRET" => "test-wcl-secret" },
+      raider_io: { "RAIDER_IO_API_KEY" => "test-raider-io-key" }
+    }.freeze
+
+    # Run a block as though a service were configured.
+    #
+    # The suite deliberately starts with every integration unconfigured (see the
+    # top of this file), which proves the "absent credentials" branch but leaves
+    # the production path — credentials present, no injected client — untested.
+    # That is exactly the gap that let a broken gate ship.
+    def with_credentials(*services)
+      with_env(services.flat_map { |s| SERVICE_CREDENTIALS.fetch(s).to_a }.to_h) { yield }
+    end
+
+    def with_env(values)
+      original = values.keys.index_with { |key| ENV[key] }
+      values.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+      yield
+    ensure
+      original.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+    end
+
+    # Minitest 6 no longer bundles minitest/mock, so stub by redefinition.
+    # A Proc value is called with the original arguments (use it to raise).
+    def stub_singleton_method(mod, name, value)
+      original = mod.method(name)
+      mod.define_singleton_method(name) do |*args, **kwargs|
+        value.is_a?(Proc) ? value.call(*args, **kwargs) : value
+      end
+      yield
+    ensure
+      mod.define_singleton_method(name, original)
+    end
+
     # Add more helper methods to be used by all tests here...
   end
 end
@@ -86,17 +127,5 @@ class ActionDispatch::IntegrationTest
 
   def guild_id_of(guild_or_id)
     (guild_or_id.respond_to?(:id) ? guild_or_id.id : guild_or_id).to_s
-  end
-
-  # Minitest 6 no longer bundles minitest/mock, so stub by redefinition.
-  # A Proc value is called with the original arguments (use it to raise).
-  def stub_singleton_method(mod, name, value)
-    original = mod.method(name)
-    mod.define_singleton_method(name) do |*args, **kwargs|
-      value.is_a?(Proc) ? value.call(*args, **kwargs) : value
-    end
-    yield
-  ensure
-    mod.define_singleton_method(name, original)
   end
 end

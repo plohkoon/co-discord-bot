@@ -158,13 +158,4 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
     end
   end
 
-  # Minitest 6 has no stubbing; ActiveSupport::TestCase's helper lives on the
-  # integration case, so it's redefined here.
-  def stub_singleton_method(mod, name, value)
-    original = mod.method(name)
-    mod.define_singleton_method(name) { |*args, **kwargs| value.call(*args, **kwargs) }
-    yield
-  ensure
-    mod.define_singleton_method(name, original)
-  end
 end
