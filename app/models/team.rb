@@ -9,6 +9,8 @@ class Team < ApplicationRecord
   has_many :team_officers, dependent: :delete_all
   has_many :absences, dependent: :destroy
   has_many :absence_digests, dependent: :destroy
+  # The roster as the team's officers maintain it in wowaudit.
+  has_many :wowaudit_characters, dependent: :destroy
 
   # Free-form roster details shown in the /team roster directory (and the web
   # team page). All optional; rendered verbatim. `emote` decorates the heading
@@ -45,6 +47,7 @@ class Team < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 7 }
 
   scope :active, -> { where(active: true) }
+  scope :with_wowaudit, -> { where.not(wowaudit_api_key: [ nil, "" ]) }
   scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }
 
   # Sensible starter questions created with a new team; admins can edit them
@@ -55,6 +58,21 @@ class Team < ApplicationRecord
     { key: "experience", label: "Relevant experience",      style: :paragraph, required: false, placeholder: "A bit about your background" },
     { key: "why",        label: "Why do you want to join?", style: :paragraph, required: true }
   ].freeze
+
+  # --- wowaudit ---
+  # Keyed per raid team, which is why the credential lives here and not in ENV.
+
+  # Discord allows five inputs in a modal, total. When the team asks for a
+  # character that costs one of them, so the question limit drops to four.
+  def question_limit
+    ApplicationQuestion::MAX_PER_TEAM - (collect_character? ? 1 : 0)
+  end
+
+  def collect_character? = self[:collect_character] && application_questions.count < ApplicationQuestion::MAX_PER_TEAM
+
+  def wowaudit_configured? = wowaudit_api_key.present?
+
+  def wowaudit_verified? = wowaudit_verified_at.present?
 
   def seed_default_questions!
     return if application_questions.exists?

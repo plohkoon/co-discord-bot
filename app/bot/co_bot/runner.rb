@@ -193,7 +193,15 @@ module CoBot
       values = event.custom_id.to_s.split(":")[1..] || []
       params = klass.component_spec[:params].zip(values).to_h
       self.class.handle(klass.name) do
-        with_tenant(event) { |guild| klass.new(event: event, guild: guild, params: params).process }
+        # A DM carries no server, so `event.server` is nil and the usual tenant
+        # lookup would refuse. Handlers marked `in_dm` name their own guild from
+        # the custom_id — that's what lets a button on a DM work at all.
+        guild = klass.in_dm? ? klass.guild_from_params(params) : nil
+        if guild
+          ActsAsTenant.with_tenant(guild) { klass.new(event: event, guild: guild, params: params).process }
+        else
+          with_tenant(event) { |g| klass.new(event: event, guild: g, params: params).process }
+        end
       end
     end
 

@@ -5,7 +5,9 @@ module Admin
   class ResourcesController < BaseController
     # Columns never shown in the browser (secrets/tokens). None today; kept as
     # the seam so future sensitive columns get added here, not leaked.
-    HIDDEN_COLUMNS = %w[].freeze
+    # Third-party credentials. Add any future secret column here — the admin
+    # browser renders every other column of every model verbatim.
+    HIDDEN_COLUMNS = %w[wowaudit_api_key].freeze
 
     # Columns shown in the list view (show renders all of them).
     LIST_LIMIT = 8
@@ -65,7 +67,10 @@ module Admin
     end
 
     def list_columns(klass)
-      priority = %w[id name status]
+      # Columns that identify a row, pinned ahead of the LIST_LIMIT cut so
+      # adding an unrelated column can't push the human-readable one off the
+      # index (schema.rb orders columns alphabetically, so this happens easily).
+      priority = %w[id name username status]
       visible_columns(klass)
         .sort_by { |c| priority.index(c.name) || 999 }
         .first(LIST_LIMIT)

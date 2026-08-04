@@ -22,6 +22,11 @@ class SessionsController < ApplicationController
     session[:member_guild_ids] = guilds.member
     # Installable servers (no Guild row) keep their names on the user row instead.
     user.update!(installable_guilds: guilds.installable)
+    # Third-party accounts the user has already linked on Discord's side. Best
+    # effort — Discord::Connections swallows its own errors, and a user who
+    # authorized before we asked for the `connections` scope simply gets none
+    # until their next sign-in.
+    user.record_discord_connections!(Discord::Connections.call(token: auth.credentials.token))
 
     redirect_to root_path, notice: "Signed in as #{user.display_name}."
   rescue => e

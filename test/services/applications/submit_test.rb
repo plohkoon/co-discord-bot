@@ -7,14 +7,20 @@ module Applications
     FakeUser = Struct.new(:id, :username)
 
     # Stands in for the modal-submit event Submit reads answers from.
+    #
+    # `character` is kept separate from the question answers rather than
+    # answering every key alike: it drives a job, so a fake that returns a
+    # value for it unconditionally would enqueue work no real blank submission
+    # would.
     class FakeEvent
       attr_reader :user
 
-      def initialize(user_id)
+      def initialize(user_id, character: nil)
         @user = FakeUser.new(user_id, "alice")
+        @character = character
       end
 
-      def value(_key) = "an answer"
+      def value(key) = key.to_s == "character" ? @character : "an answer"
     end
 
     def guild = @guild ||= Guild.sync_from_discord(id: 1, name: "Test")
@@ -25,7 +31,11 @@ module Applications
       end
     end
 
-    def submit = ActsAsTenant.with_tenant(guild) { Submit.call(team: team, event: FakeEvent.new(11)) }
+    def submit(character: nil)
+      ActsAsTenant.with_tenant(guild) do
+        Submit.call(team: team, event: FakeEvent.new(11, character: character))
+      end
+    end
 
     test "submitting schedules no per-application timers — the daily sweep owns that" do
       assert_enqueued_jobs 1 do # the confirmation DM, and nothing else
@@ -33,6 +43,30 @@ module Applications
       end
       assert_enqueued_jobs 0, only: ApplicationReminderJob
       assert_enqueued_jobs 0, only: ApplicationAutoRejectJob
+    end
+
+    # The character is stored verbatim and resolved out of band, so a typo can
+    # never cost someone their application.
+    test "a named character is stored as typed and queued for resolution" do
+      application = nil
+      assert_enqueued_with(job: ApplicationCharacterJob) do
+        application = submit(character: " Thrall-Sargeras ")
+      end
+
+      assert_equal "Thrall-Sargeras", application.character_input
+      assert_nil application.wow_character_id, "resolution happens out of band"
+      # Not "unresolved" — that would render as a typo to an officer. Until the
+      # job has looked, the honest state is "still looking".
+      assert application.character_pending?
+      assert_not application.character_unresolved?
+    end
+
+    test "no character named means no resolution work" do
+      application = submit
+
+      assert_nil application.character_input
+      assert_not application.character_asked?
+      assert_enqueued_jobs 0, only: ApplicationCharacterJob
     end
 
     test "submitting enqueues the applicant's confirmation DM after commit" do

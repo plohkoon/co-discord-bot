@@ -1,0 +1,217 @@
+<% content_for :title, "Account · co-bot" %>
+
+<%= render Ui::PageHeaderComponent.new(
+      title: "Your account",
+      subtitle: "Connections that apply everywhere co-bot is installed.") %>
+
+<%= render Ui::SectionComponent.new(title: "Battle.net", classes: "mt-8") do %>
+  <% unless @battle_net_configured %>
+    <%= render Ui::CardComponent.new do %>
+      <p class="text-sm text-muted-foreground">
+        Battle.net linking isn't configured on this server yet
+        (<span class="text-foreground">BLIZZARD_CLIENT_ID</span> /
+        <span class="text-foreground">BLIZZARD_CLIENT_SECRET</span>).
+      </p>
+    <% end %>
+  <% end %>
+
+  <% if @battle_net_accounts.any? %>
+    <div class="space-y-3">
+      <% @battle_net_accounts.each do |account| %>
+        <%= render Ui::CardComponent.new do %>
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div class="font-medium text-foreground"><%= account.display_name %></div>
+              <div class="text-xs text-muted-foreground mt-0.5">
+                <%= account.region.upcase %> ·
+                <%= pluralize(account.wow_characters.size, "character") %> ·
+                linked <%= time_ago_in_words(account.linked_at) %> ago
+              </div>
+              <% if account.matches_discord_connection? == false %>
+                <div class="text-xs text-light-red mt-1">
+                  Discord has a different Battle.net account linked
+                  (<%= current_user.discord_battle_tag %>).
+                </div>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <%= button_to "Refresh", refresh_battle_net_account_path(account),
+                    class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+              <%= button_to "Unlink", battle_net_account_path(account), method: :delete,
+                    form: { data: { turbo_confirm: "Unlink #{account.display_name} and forget its characters?" } },
+                    class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>
+            </div>
+          </div>
+
+          <% if account.wow_characters.any? %>
+            <div class="mt-4 grid gap-2 sm:grid-cols-2">
+              <% account.wow_characters.by_prominence.each do |character| %>
+                <div class="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm text-foreground truncate">
+                      <%= character.full_name %>
+                      <% if character.missing? %>
+                        <span class="text-xs text-muted-foreground">· renamed or transferred</span>
+                      <% end %>
+                    </div>
+                    <div class="text-xs text-muted-foreground truncate">
+                      <%= [ character.level && "Level #{character.level}",
+                            character.spec_and_class || character.playable_class,
+                            character.role&.upcase,
+                            character.guild_name && "<#{character.guild_name}>" ].compact.join(" · ") %>
+                    </div>
+                    <% if character.raid_progress.any? %>
+                      <div class="text-xs text-muted-foreground truncate">
+                        <%= character.raid_progress.map { |r| "#{r.summary} #{r.wow_raid&.short_name || r.raid_slug}" }.join(" · ") %>
+                      </div>
+                    <% end %>
+                    <% history = character.season_history %>
+                    <% if history.size > 1 %>
+                      <div class="text-xs text-muted-foreground truncate" title="Mythic+ score by season">
+                        <%= history.map { |s| "#{s.season_name} #{s.score}" }.join(" · ") %>
+                      </div>
+                    <% end %>
+                  </div>
+                  <% if character.parse %>
+                    <div class="text-right shrink-0">
+                      <div class="text-sm text-foreground tabular-nums"><%= character.parse %></div>
+                      <div class="text-[10px] uppercase tracking-wide text-muted-foreground">parse</div>
+                    </div>
+                  <% end %>
+                  <% if character.ilvl || character.mythic_score %>
+                    <div class="text-right shrink-0">
+                      <% if character.ilvl %>
+                        <div class="text-sm text-foreground tabular-nums"><%= character.ilvl %></div>
+                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground">ilvl</div>
+                      <% end %>
+                    </div>
+                    <% if character.mythic_score %>
+                      <div class="text-right shrink-0">
+                        <div class="text-sm text-gold tabular-nums"><%= character.mythic_score %></div>
+                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground">m+</div>
+                      </div>
+                    <% end %>
+                  <% end %>
+                  <% if current_user.main_wow_character_id == character.id %>
+                    <%= render(Ui::BadgeComponent.new(variant: :gold)) { "main" } %>
+                  <% else %>
+                    <%= button_to "Set main", make_main_wow_character_path(character),
+                          class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+                  <% end %>
+                  <%= link_to "Armory", character.armory_url, target: "_blank", rel: "noopener",
+                        class: "text-xs text-muted-foreground hover:text-foreground transition shrink-0" %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if account.characters_stale? %>
+            <p class="text-xs text-muted-foreground mt-3">
+              Made new characters since you linked? Re-link to pick them up —
+              Blizzard only shares your roster during the link itself.
+            </p>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <%= render Ui::CardComponent.new do %>
+      <p class="text-sm text-muted-foreground">
+        Link your Battle.net account so co-bot knows which WoW characters are yours.
+        <% if current_user.battle_net_link_suggested? %>
+          Discord says you've already linked
+          <span class="text-foreground"><%= current_user.discord_battle_tag %></span> —
+          confirming it here lets us see your characters.
+        <% end %>
+      </p>
+    <% end %>
+  <% end %>
+
+  <% if @battle_net_configured %>
+    <div class="mt-3">
+      <%# data-turbo=false: full-page POST so the browser can follow OmniAuth's redirect to Blizzard. %>
+      <%= button_to "/auth/battle_net", method: :post, form: { data: { turbo: false } },
+            class: Ui::ButtonComponent.classes(
+              variant: @battle_net_accounts.any? ? :outline : :gold, size: :sm) do %>
+        <%= @battle_net_accounts.any? ? "Link another account" : "Link Battle.net" %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render Ui::SectionComponent.new(title: "Claimed characters", classes: "mt-8") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Don't want to link Battle.net? Claim a character by name instead. It works the same way
+    everywhere — gear, score and parses all get tracked — but it stays marked
+    <span class="text-foreground">unverified</span>, because only Battle.net can prove it's yours.
+  </p>
+
+  <% if @claimed_characters.any? %>
+    <div class="space-y-2 mb-3">
+      <% @claimed_characters.each do |character| %>
+        <%= render Ui::CardComponent.new(padding: "p-3") do %>
+          <div class="flex items-center gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm text-foreground truncate">
+                <%= character.full_name %>
+                <span class="text-xs text-muted-foreground">· <%= character.region.upcase %></span>
+                <%= render(Ui::BadgeComponent.new) { "unverified" } %>
+              </div>
+              <div class="text-xs text-muted-foreground truncate">
+                <%= [ character.level && "Level #{character.level}",
+                      character.spec_and_class || character.playable_class,
+                      character.ilvl && "ilvl #{character.ilvl}",
+                      character.mythic_score && "#{character.mythic_score} M+" ].compact.join(" · ") %>
+              </div>
+            </div>
+            <% if current_user.main_wow_character_id == character.id %>
+              <%= render(Ui::BadgeComponent.new(variant: :gold)) { "main" } %>
+            <% else %>
+              <%= button_to "Set main", make_main_wow_character_path(character),
+                    class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+            <% end %>
+            <%= button_to "Release", wow_character_path(character), method: :delete,
+                  form: { data: { turbo_confirm: "Release your claim on #{character.full_name}?" } },
+                  class: Ui::ButtonComponent.classes(variant: :danger, size: :sm) %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= form_with url: wow_characters_path, method: :post,
+        class: "rounded-lg border border-border bg-card p-4 flex flex-wrap items-end gap-3" do %>
+    <label class="flex-1 min-w-40">
+      <span class="text-xs text-muted-foreground">Character name</span>
+      <%= text_field_tag :name, nil, placeholder: "Thrall", class: "field w-full mt-1" %>
+    </label>
+    <label class="flex-1 min-w-40">
+      <span class="text-xs text-muted-foreground">Realm</span>
+      <%= text_field_tag :realm, nil, placeholder: "Sargeras", class: "field w-full mt-1" %>
+    </label>
+    <label>
+      <span class="text-xs text-muted-foreground">Region</span>
+      <%= select_tag :region, options_for_select(@regions.map { |r| [ r.upcase, r ] }),
+            class: "field mt-1" %>
+    </label>
+    <%= submit_tag "Claim character", class: Ui::ButtonComponent.classes(variant: :outline) %>
+  <% end %>
+<% end %>
+
+<%= render Ui::SectionComponent.new(title: "Discord connections", classes: "mt-8") do %>
+  <%= render Ui::CardComponent.new do %>
+    <% if current_user.discord_battle_tag.present? %>
+      <div class="text-sm text-foreground"><%= current_user.discord_battle_tag %></div>
+      <p class="text-xs text-muted-foreground mt-1">
+        Read from your Discord profile at sign-in. It tells us who you are on
+        Battle.net, but only the link above proves which characters you own.
+      </p>
+    <% else %>
+      <p class="text-sm text-muted-foreground">
+        No Battle.net account connected in Discord. You can add one under
+        <span class="text-foreground">User Settings → Connections</span> —
+        or just link it directly above.
+      </p>
+    <% end %>
+  <% end %>
+<% end %>

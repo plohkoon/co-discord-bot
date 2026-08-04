@@ -7,9 +7,27 @@ class MembershipsController < ApplicationController
   def show
     @applications = @membership.team_applications.includes(:application_answers).recent
     @notes = @membership.membership_notes
+    # The character they play on this team, falling back to what they applied
+    # on — a lead looking at a fresh application shouldn't have to set it first.
+    @character = @membership.wow_character || @applications.detect(&:wow_character)&.wow_character
+    # Shown when nothing resolved, so "typo" reads differently from "no data".
+    @unresolved_input = @applications.detect(&:character_unresolved?)&.character_input
+    @character_candidates = @membership.user&.wow_characters&.by_prominence || WowCharacter.none
   end
 
   # Pull the team role and archive — the web mirror of /team member remove.
+  # A lead sets which character this member is active as on their team. Scoped
+  # to characters the MEMBER owns — a lead can correct a typo or a swap, not
+  # attribute someone else's character to them.
+  def set_character
+    membership = @team.team_memberships.find(params[:id])
+    character = membership.user&.wow_characters&.find_by(id: params[:wow_character_id])
+
+    membership.update!(wow_character: character)
+    redirect_to guild_team_membership_path(@guild, @team, membership),
+                notice: character ? "Active character set to #{character.full_name}." : "Active character cleared."
+  end
+
   def remove
     if @membership.archived?
       return redirect_to guild_team_membership_path(@guild, @team, @membership),
