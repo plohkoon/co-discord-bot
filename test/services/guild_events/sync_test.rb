@@ -10,7 +10,14 @@ class GuildEvents::SyncTest < ActiveSupport::TestCase
     @guild ||= Guild.sync_from_discord(id: 1, name: "Test").tap { |g| g.update!(events_channel_id: CHANNEL) }
   end
 
-  def payload(status: 1, start_at: 2.days.from_now, end_at: nil, name: "Raid Night", description: nil)
+  # Pinned per test rather than evaluated on each call. `iso8601` truncates to
+  # whole seconds, so two "identical" payloads built either side of a second
+  # boundary carry different start times — and a test asserting that an
+  # UNCHANGED schedule enqueues nothing would then see a changed one. Rare
+  # alone; reliably reproducible once the suite is large enough to be slow.
+  def default_start = @default_start ||= 2.days.from_now
+
+  def payload(status: 1, start_at: default_start, end_at: nil, name: "Raid Night", description: nil)
     {
       "id" => EVENT_ID.to_s,
       "guild_id" => guild.id.to_s,

@@ -7,8 +7,13 @@ module Notifications
   module DirectMessage
     module_function
 
-    def call(user_id:, content:, api: Discord::BotApi.new)
-      api.send_dm(user_id, { "content" => content, "allowed_mentions" => { "parse" => [] } })
+    # `components` lets a DM carry a button. That matters because a button may
+    # open a modal where a modal submit may not, so a follow-up message is the
+    # only place a correction flow can live.
+    def call(user_id:, content:, components: nil, api: Discord::BotApi.new)
+      payload = { "content" => content, "allowed_mentions" => { "parse" => [] } }
+      payload["components"] = components.to_a if components
+      api.send_dm(user_id, payload)
     rescue Discord::BotApi::Forbidden, Discord::BotApi::NotFound => e
       Rails.logger.info("[notifications] DM to #{user_id} skipped: #{e.class}: #{e.message}")
       nil

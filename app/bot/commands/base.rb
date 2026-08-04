@@ -34,10 +34,22 @@ module Commands
       def officer_only! = requires(:officer)
 
       # component handlers declare a custom_id key + params
-      def component(kind, key, params: [])
-        @component_spec = { kind: kind.to_sym, key: key.to_s, params: Array(params).map(&:to_sym) }
+      #
+      # `in_dm: true` marks a handler that must work with no server context —
+      # a button on a DM carries no guild_id, so the runner can't derive the
+      # tenant from the event. Such a class implements `guild_from_params` and
+      # resolves it from its own custom_id instead.
+      def component(kind, key, params: [], in_dm: false)
+        @component_spec = { kind: kind.to_sym, key: key.to_s,
+                            params: Array(params).map(&:to_sym), in_dm: in_dm }
       end
       def component_spec = @component_spec
+
+      def in_dm? = !!@component_spec&.dig(:in_dm)
+
+      # Resolve the tenant from the custom_id when there is no server on the
+      # event. Overridden by in_dm handlers.
+      def guild_from_params(_params) = nil
     end
 
     attr_reader :event, :guild, :params

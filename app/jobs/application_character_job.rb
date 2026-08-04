@@ -61,6 +61,18 @@ class ApplicationCharacterJob < ApplicationJob
     Rails.logger.info("[wow] application #{application.id} resolved to #{character.full_name}")
   end
 
+  # A button, because a button may open a modal and a modal submit may not —
+  # which is why correction has to happen on a follow-up message rather than
+  # when the application is submitted.
+  def fix_character_view(application)
+    view = Discordrb::Webhooks::View.new
+    view.row do |row|
+      row.button(label: "✏️ Fix character", style: :primary,
+                 custom_id: CoBot::CommandRegistry.custom_id("fixchar", application.id))
+    end
+    view
+  end
+
   # Best-effort, like every other DM here: a closed DM is swallowed rather than
   # retried. The application stands either way — the officers still see what was
   # typed, and the applicant can correct it.
@@ -70,9 +82,10 @@ class ApplicationCharacterJob < ApplicationJob
     Notifications::DirectMessage.call(
       user_id: application.discord_user_id,
       content: "Your application to **#{application.team.name}** is in — but I couldn't find a " \
-               "character called **#{result.input}**. #{result.error} " \
-               "\n\nNothing is lost: the team can still review your application. Reply to a team " \
-               "officer with the correct **Name-Realm** and they can set it for you."
+               "character called **#{result.input}**. #{result.error}" \
+               "\n\nNothing is lost: the team can still review your application. Use the button " \
+               "below to correct it yourself.",
+      components: fix_character_view(application)
     )
   end
 end
