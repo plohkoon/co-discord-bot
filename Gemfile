@@ -1,7 +1,10 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3"
+# >= 8.1.3.1 is a floor, not a preference: 8.1.3 carries CVE-2026-66066
+# (arbitrary file read / RCE in Active Storage variant processing), and a
+# regenerated lockfile would otherwise be free to resolve back to it.
+gem "rails", "~> 8.1.3", ">= 8.1.3.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -41,10 +44,14 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.0"
-# image_processing 2.0 made its backends soft dependencies — pick vips (the
-# Rails default variant processor; the Dockerfile and CI install libvips).
-# require: false keeps boot from needing libvips — image_processing requires
-# it itself when a variant is actually processed.
+# image_processing 2.0 made its backends soft dependencies — pick vips, the
+# Rails default variant processor.
+#
+# libvips is needed AT BOOT, not just when a variant is processed. Rails
+# 8.1.3.1 (the CVE-2026-66066 fix) loads the variant processor eagerly, so the
+# `require: false` below no longer defers it — without the native library the
+# app will not start at all. The Dockerfile and CI both install it; a
+# development machine needs `brew install vips` / `apt install libvips`.
 gem "ruby-vips", require: false
 
 # --- co-bot dependencies ---
