@@ -47,13 +47,16 @@ gem "image_processing", "~> 2.0"
 # image_processing 2.0 made its backends soft dependencies — pick vips, the
 # Rails default variant processor.
 #
-# Required at boot, not lazily: Rails 8.1.3.1 loads the Active Storage variant
-# processor eagerly, so libvips has to be present for the app to start at all.
-# This carried `require: false` to defer exactly that, which the eager load
-# defeats — leaving it would only imply a deferral that no longer happens.
-# The Dockerfile and CI install libvips; a development machine needs
-# `brew install vips` / `apt install libvips`.
-gem "ruby-vips"
+# libvips is needed to BOOT the app: Rails 8.1.3.1 loads the Active Storage
+# variant processor eagerly, so `require: false` no longer defers it the way it
+# once did. The Dockerfile and CI's test jobs install it; a development machine
+# needs `brew install vips` / `apt install libvips`.
+#
+# `require: false` still earns its place, though — it keeps ruby-vips off the
+# Bundler.require path for anything that loads this Gemfile WITHOUT booting
+# Rails. `bin/importmap audit` is exactly that, and CI's scan_js job runs it
+# without installing libvips. Removing the flag turns that job red.
+gem "ruby-vips", require: false
 
 # --- co-bot dependencies ---
 # Discord gateway bot library [https://github.com/shardlab/discordrb]
