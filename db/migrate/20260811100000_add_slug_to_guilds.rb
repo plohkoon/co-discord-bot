@@ -8,6 +8,10 @@ class AddSlugToGuilds < ActiveRecord::Migration[8.1]
   # validations; SlugGenerator is pure string logic.
   class MigrationGuild < ActiveRecord::Base
     self.table_name = "guilds"
+    # guilds is created with `id: false` (the PK is the Discord snowflake,
+    # declared as a plain bigint column), so Rails can't infer the primary
+    # key — without this, update_columns builds `WHERE "guilds"."" = ...`.
+    self.primary_key = "id"
   end
 
   def up
