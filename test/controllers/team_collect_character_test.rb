@@ -45,11 +45,19 @@ class TeamCollectCharacterTest < ActionDispatch::IntegrationTest
   end
 
   test "five custom questions override the flag until one is removed" do
+    # The only route into this state: character field off, all five slots
+    # filled with custom questions, then the toggle flipped back on. The
+    # column stores the wish; the getter keeps the modal within budget.
     ActsAsTenant.with_tenant(@guild) do
+      @team.update!(collect_character: false)
       5.times { |i| @team.application_questions.create!(position: i, key: "q#{i}", label: "Q#{i}") }
     end
+    sign_in_as users(:member), member: [ @guild ]
 
-    assert @team.reload[:collect_character]
+    patch guild_team_path(@guild, @team), params: { team: { collect_character: "1" } }
+
+    @team.reload
+    assert @team[:collect_character]
     assert_not @team.collect_character?
   end
 end
