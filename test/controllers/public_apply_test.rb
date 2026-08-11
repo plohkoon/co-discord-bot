@@ -56,14 +56,16 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
   test "an anonymous visitor sees the guild page: description, teams, sign-in CTA, no forms" do
     @guild.update!(description: "A friendly raiding community.", invite_url: "https://discord.gg/abc123")
+    @team.update!(description: "We push keys and clear heroic weekly.")
 
     get public_guild_path(@guild.slug)
 
     assert_response :success
     assert_match "Raid Server", response.body
     assert_match "A friendly raiding community.", response.body
-    # Team cards render in full — names, apply links, closed notices.
+    # Team cards render in full — names, bios, apply links, closed notices.
     assert_match "Alpha", response.body
+    assert_match "We push keys and clear heroic weekly.", response.body
     assert_match "Bravo is full.", response.body
     assert_select "a[href=?]", public_team_path(@guild.slug, @team.slug), text: /Apply/
     # The CTA POSTs into the OAuth flow with this page as the return origin.
