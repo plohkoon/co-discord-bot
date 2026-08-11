@@ -1,0 +1,25 @@
+<%# Shown to anonymous visitors on the public apply pages — browsing is free,
+    applying takes a Discord sign-in. The button POSTs straight into the
+    OAuth flow with the current path as `origin` (the same mechanism as the
+    login form — validated in SessionsController#safe_internal_path), so the
+    visitor lands right back here with the forms unlocked. %>
+<div class="rounded-xl border border-gold/40 bg-gold/5 p-5">
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="min-w-0 flex-1">
+      <h2 class="font-semibold text-foreground">Want to apply?</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        You can browse the teams without an account. When you're ready to apply,
+        sign in with Discord — you'll come right back to this page.
+      </p>
+    </div>
+    <div class="shrink-0">
+      <%# data-turbo=false: full-page POST so the browser can follow OmniAuth's
+          redirect to discord.com — same as the login page's button. %>
+      <%= button_to "/auth/discord", method: :post, form: { data: { turbo: false } },
+            params: { origin: request.fullpath },
+            class: Ui::ButtonComponent.classes(variant: :gold) do %>
+        Sign in with Discord to apply
+      <% end %>
+    </div>
+  </div>
+</div>

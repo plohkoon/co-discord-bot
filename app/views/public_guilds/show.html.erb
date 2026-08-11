@@ -3,8 +3,17 @@
 <%= render Ui::PageHeaderComponent.new(title: @guild.name, subtitle: "Team applications") %>
 
 <div class="space-y-8">
-  <% unless guild_member? %>
-    <%= render "public_guilds/join_banner", guild: @guild %>
+  <% if @guild.description.present? %>
+    <%# Rendered plain, like the team bio — custom emote mentions stay as text. %>
+    <p class="max-w-2xl text-sm text-foreground/90 whitespace-pre-line -mt-2"><%= @guild.description %></p>
+  <% end %>
+
+  <% if logged_in? %>
+    <% unless guild_member? %>
+      <%= render "public_guilds/join_banner", guild: @guild %>
+    <% end %>
+  <% else %>
+    <%= render "public_guilds/sign_in_banner" %>
   <% end %>
 
   <% if @grouped_teams.empty? %>

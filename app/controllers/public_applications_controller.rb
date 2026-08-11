@@ -8,6 +8,10 @@
 # the join banner here and a join reminder in the confirmation instead.
 class PublicApplicationsController < PublicBaseController
   before_action :set_team
+  # Viewing the team page is public; submitting is not. An anonymous POST is
+  # bounced into the login flow (no return_to — a lost POST can't be replayed)
+  # and creates nothing.
+  before_action :require_login, only: :create
 
   def new
     load_form_state
@@ -46,10 +50,11 @@ class PublicApplicationsController < PublicBaseController
 
   def load_form_state
     @questions = @team.application_questions.ordered.to_a
-    # Looked up for everyone — a non-member may already have a pending
-    # application (that's the whole apply-before-joining flow), and the page
-    # must show its state rather than offer the form again.
-    @membership = TeamMembership.find_by(team_id: @team.id, discord_user_id: current_user.discord_id)
+    # Looked up for every signed-in visitor — a non-member may already have a
+    # pending application (that's the whole apply-before-joining flow), and the
+    # page must show its state rather than offer the form again. Anonymous
+    # visitors have no membership to look up (they see the sign-in CTA).
+    @membership = TeamMembership.find_by(team_id: @team.id, discord_user_id: current_user.discord_id) if logged_in?
   end
 
   # The join reminder rides the confirmation for applicants who aren't in the

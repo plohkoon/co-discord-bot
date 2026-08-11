@@ -40,11 +40,17 @@ class GuildsController < ApplicationController
   # channel; a non-blank id must come from the guild's real text-channel list.
   def update
     attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :events_channel_id,
-                                          :time_zone, :invite_url, :slug)
+                                          :time_zone, :invite_url, :slug, :description)
     CHANNEL_SETTINGS.each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
     # Blank clears the invite; the model rejects anything that isn't a real
     # Discord invite URL.
     attrs[:invite_url] = attrs[:invite_url].strip.presence if attrs.key?(:invite_url)
+    # The public page blurb gets the same lenient inline emote resolution as
+    # the team roster lines: known :name: shortcodes become mentions, unknown
+    # ones stay as typed. Blank clears it.
+    if attrs.key?(:description)
+      attrs[:description] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[:description]).presence
+    end
     # The public apply URL slug. Never blanked implicitly — the model's
     # presence/format/uniqueness validations answer with a friendly alert.
     attrs[:slug] = attrs[:slug].strip if attrs.key?(:slug)

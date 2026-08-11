@@ -5,13 +5,22 @@
       subtitle: "Application — #{@guild.name}") %>
 
 <div class="max-w-2xl space-y-6">
-  <% unless guild_member? %>
+  <% if @guild.description.present? %>
+    <%# The guild's blurb, small — the page belongs to the team. %>
+    <p class="text-sm text-muted-foreground whitespace-pre-line -mt-2"><%= @guild.description %></p>
+  <% end %>
+
+  <% if logged_in? && !guild_member? %>
     <%= render "public_guilds/join_banner", guild: @guild %>
   <% end %>
 
   <%= render "public_guilds/team", guild: @guild, team: @team, linked: false %>
 
-  <% if @membership&.active? %>
+  <% if !logged_in? %>
+    <%# Where the form would be: browsing is free, applying takes a sign-in.
+        A closed team's notice already renders inside the card above. %>
+    <%= render "public_guilds/sign_in_banner" if @team.recruiting? %>
+  <% elsif @membership&.active? %>
     <%= render Ui::EmptyStateComponent.new do %>
       You're already a member of <span class="text-foreground"><%= @team.name %></span>.
     <% end %>

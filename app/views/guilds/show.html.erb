@@ -96,8 +96,8 @@
 <%= render Ui::SectionComponent.new(title: "Public apply page", classes: "mt-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     A shareable page listing this server's recruiting teams with web application forms.
-    Visitors sign in with Discord; anyone not in the server yet sees the invite link below
-    (each team page also has its own direct link).
+    Anyone can view it; applying takes a Discord sign-in, and anyone not in the server yet
+    sees the invite link below (each team page also has its own direct link).
   </p>
   <div class="rounded-xl border border-border bg-card p-5 space-y-4">
     <label class="block">
@@ -107,6 +107,12 @@
     </label>
     <%= form_with model: @guild, url: guild_path(@guild), method: :patch, scope: :guild,
           class: "flex flex-wrap items-end gap-3" do |f| %>
+      <label class="block w-full">
+        <span class="text-xs text-muted-foreground">Server description — a short blurb shown at the top of the public apply page</span>
+        <%= f.text_area :description, rows: 3, maxlength: 500,
+              placeholder: "e.g. A friendly raiding community — all skill levels welcome.",
+              class: "field w-full mt-1" %>
+      </label>
       <label class="block grow">
         <span class="text-xs text-muted-foreground">Link slug — lowercase letters, numbers and hyphens. Changing it breaks links you've already shared.</span>
         <%= f.text_field :slug, required: true, maxlength: SlugGenerator::MAX_LENGTH,
