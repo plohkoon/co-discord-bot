@@ -28,7 +28,7 @@
           <% end %>
           <div class="space-y-3">
             <% teams.each do |team| %>
-              <%= render "public_guilds/team", guild: @guild, team: team %>
+              <%= render "public_guilds/team", guild: @guild, team: team, viewer_is_member: guild_member? %>
             <% end %>
           </div>
         </section>

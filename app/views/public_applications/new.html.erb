@@ -14,7 +14,7 @@
     <%= render "public_guilds/join_banner", guild: @guild %>
   <% end %>
 
-  <%= render "public_guilds/team", guild: @guild, team: @team, linked: false %>
+  <%= render "public_guilds/team", guild: @guild, team: @team, linked: false, viewer_is_member: guild_member? %>
 
   <% if !logged_in? %>
     <%# Where the form would be: browsing is free, applying takes a sign-in.
