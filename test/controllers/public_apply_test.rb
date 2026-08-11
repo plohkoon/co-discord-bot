@@ -281,7 +281,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_select "form[action='/auth/discord']", count: 0
   end
 
-  test "signed-in visitors do see the Team Leads line" do
+  test "guild members do see the Team Leads line" do
     add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
     sign_in_as users(:member), member: [ @guild ]
 
@@ -294,8 +294,11 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_match "raidlead", response.body
   end
 
-  test "a signed-in non-member also sees the Team Leads line" do
-    add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+  test "a signed-in NON-member does NOT see the Team Leads line" do
+    # A lead's handle is useless to someone outside the server (no DM, no
+    # mention) and still discloses staff identity — the gate is membership,
+    # not merely being signed in.
+    officer = add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
     sign_in_as users(:member)
 
     with_membership(false) do
@@ -303,8 +306,9 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_match "Team leads", response.body
-    assert_match "raidlead", response.body
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
   end
 
   test "the team page shows the questions and the character field like the Discord modal" do
