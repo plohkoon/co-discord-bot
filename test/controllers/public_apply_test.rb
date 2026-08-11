@@ -52,6 +52,21 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
   def applications_count = ActsAsTenant.without_tenant { TeamApplication.count }
 
+  # A person×team with a live, undecided application — pending membership +
+  # pending application (paused when asked: still status pending, just parked).
+  def create_open_application(user, team: @team, paused: false)
+    ActsAsTenant.with_tenant(@guild) do
+      membership = TeamMembership.create!(team: team, discord_user_id: user.discord_id,
+                                          discord_username: user.username, status: :pending)
+      application = membership.team_applications.create!(
+        team: team, discord_user_id: user.discord_id,
+        discord_username: user.username, source: :applied
+      )
+      application.update!(paused_at: Time.current) if paused
+      [ membership, application ]
+    end
+  end
+
   # --- Anonymous viewing (browsing is public; applying is not) ---
 
   test "an anonymous visitor sees the guild page: description, teams, sign-in CTA, no forms" do
@@ -308,6 +323,121 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to public_team_path(@guild.slug, @team.slug)
     assert_match "already have a pending application", flash[:alert]
+  end
+
+  test "an open application blocks re-applying: the page shows its state, not the form" do
+    create_open_application(users(:member))
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get public_team_path(@guild.slug, @team.slug)
+      assert_response :success
+      # State, not a second form.
+      assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
+
+      # A hand-crafted re-submit files nothing and notifies no one.
+      assert_no_difference -> { applications_count } do
+        assert_no_enqueued_jobs only: [ ReviewMessagePostJob, ConfirmationDmJob ] do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "again" } }
+        end
+      end
+    end
+
+    assert_redirected_to public_team_path(@guild.slug, @team.slug)
+    assert_match "already have a pending application", flash[:alert]
+  end
+
+  test "a PAUSED application is still open — re-applying is blocked and files nothing" do
+    _membership, application = create_open_application(users(:member), paused: true)
+    assert application.paused?, "expected the application to be paused (still pending)"
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get public_team_path(@guild.slug, @team.slug)
+      assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
+
+      assert_no_difference -> { applications_count } do
+        assert_no_enqueued_jobs only: [ ReviewMessagePostJob, ConfirmationDmJob ] do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "again" } }
+        end
+      end
+    end
+
+    assert_match "already have a pending application", flash[:alert]
+  end
+
+  test "a non-member with an open application is blocked from re-submitting too" do
+    create_open_application(users(:member))
+    # Signed in but NOT in the Discord server — apply-before-join still can't
+    # duplicate an open application.
+    sign_in_as users(:member)
+
+    with_membership(false) do
+      get public_team_path(@guild.slug, @team.slug)
+      assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
+
+      assert_no_difference -> { applications_count } do
+        assert_no_enqueued_jobs only: [ ReviewMessagePostJob, ConfirmationDmJob ] do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "again" } }
+        end
+      end
+    end
+
+    assert_match "already have a pending application", flash[:alert]
+  end
+
+  test "an ARCHIVED (rejected) application still lets the user re-apply" do
+    ActsAsTenant.with_tenant(@guild) do
+      membership = TeamMembership.create!(team: @team, discord_user_id: users(:member).discord_id,
+                                          discord_username: users(:member).username, status: :archived)
+      membership.team_applications.create!(team: @team, discord_user_id: users(:member).discord_id,
+                                           discord_username: users(:member).username,
+                                           source: :applied, status: :rejected)
+    end
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      # The form is offered again — re-applying after a rejection is the flow.
+      get public_team_path(@guild.slug, @team.slug)
+      assert_select "input[name=?]", "application[q:#{@question.id}]"
+
+      assert_difference -> { applications_count } do
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: { "q:#{@question.id}" => "give me another shot" } }
+      end
+    end
+
+    assert_redirected_to public_team_path(@guild.slug, @team.slug)
+    assert_match "Application sent", flash[:notice]
+  end
+
+  test "rapid-fire submissions from one user are rate limited" do
+    sign_in_as users(:member), member: [ @guild ]
+    # The controller resolves its counter store through Rails.cache at request
+    # time; test's :null_store no-ops the limiter, so swap in a real one for
+    # this case (fresh, so the counter starts at zero).
+    fresh_store = ActiveSupport::Cache::MemoryStore.new
+
+    with_membership(true) do
+      stub_singleton_method(Rails, :cache, fresh_store) do
+        # First lands, the next four are duplicate-blocked — all under the cap,
+        # none rate-limited yet.
+        5.times do |i|
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "try #{i}" } }
+          assert_no_match(/applying too fast/, flash[:alert].to_s)
+        end
+
+        # The sixth within the minute is refused before the action even runs.
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: { "q:#{@question.id}" => "spam" } }
+        assert_redirected_to public_team_path(@guild.slug, @team.slug)
+        assert_match "applying too fast", flash[:alert]
+      end
+    end
   end
 
   test "an active member of the team is told so instead of re-applying" do
