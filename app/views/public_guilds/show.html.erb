@@ -4,8 +4,7 @@
 
 <div class="space-y-8">
   <% if @guild.description.present? %>
-    <%# Rendered plain, like the team bio — custom emote mentions stay as text. %>
-    <p class="max-w-2xl text-sm text-foreground/90 whitespace-pre-line -mt-2"><%= @guild.description %></p>
+    <p class="max-w-2xl text-sm text-foreground/90 whitespace-pre-line -mt-2"><%= discord_emotes(@guild.description) %></p>
   <% end %>
 
   <% if logged_in? %>
