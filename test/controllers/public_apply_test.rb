@@ -477,30 +477,34 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_match "Application sent", flash[:notice]
   end
 
-  test "rapid-fire submissions from one user are rate limited" do
+  test "rapid-fire submissions from one IP are throttled with a 429" do
     sign_in_as users(:member), member: [ @guild ]
-    # The controller resolves its counter store through Rails.cache at request
-    # time; test's :null_store no-ops the limiter, so swap in a real one for
-    # this case (fresh, so the counter starts at zero).
-    fresh_store = ActiveSupport::Cache::MemoryStore.new
+    # Rack::Attack is disabled in test by default (the suite makes far more than
+    # 300 req/min from 127.0.0.1); enable it just for this case, on a fresh
+    # counter, and restore afterwards.
+    Rack::Attack.enabled = true
+    Rack::Attack.reset!
 
     with_membership(true) do
-      stub_singleton_method(Rails, :cache, fresh_store) do
-        # First lands, the next four are duplicate-blocked — all under the cap,
-        # none rate-limited yet.
-        5.times do |i|
-          post public_team_applications_path(@guild.slug, @team.slug),
-               params: { application: { "q:#{@question.id}" => "try #{i}" } }
-          assert_no_match(/applying too fast/, flash[:alert].to_s)
-        end
-
-        # The sixth within the minute is refused before the action even runs.
+      # The apply/ip throttle is 5/min. The first lands; #2–5 are
+      # duplicate-blocked by the re-apply guard (still counted by the throttle);
+      # none 429 yet.
+      5.times do |i|
         post public_team_applications_path(@guild.slug, @team.slug),
-             params: { application: { "q:#{@question.id}" => "spam" } }
-        assert_redirected_to public_team_path(@guild.slug, @team.slug)
-        assert_match "applying too fast", flash[:alert]
+             params: { application: { "q:#{@question.id}" => "try #{i}" } }
+        assert_not_equal 429, response.status
       end
+
+      # The sixth within the minute is refused at the Rack layer, before the
+      # controller runs.
+      post public_team_applications_path(@guild.slug, @team.slug),
+           params: { application: { "q:#{@question.id}" => "spam" } }
+      assert_equal 429, response.status
+      assert_match(/too fast/i, response.body)
     end
+  ensure
+    Rack::Attack.reset!
+    Rack::Attack.enabled = false
   end
 
   test "an active member of the team is told so instead of re-applying" do
