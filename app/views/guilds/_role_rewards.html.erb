@@ -54,9 +54,16 @@
                 data: { role_reward_form_target: "kind", action: "role-reward-form#toggle" } %>
         </label>
         <label class="block flex-1 min-w-48" data-role-reward-form-target="field" data-kinds="achievement">
-          <span class="text-xs text-muted-foreground">Achievement name (exact match)</span>
-          <%= f.text_field :achievement_name, list: "achievement-name-options",
-                placeholder: "Ahead of the Curve: …", class: "field w-full mt-1" %>
+          <span class="text-xs text-muted-foreground">Achievement</span>
+          <% if @achievement_name_options.any? %>
+            <%= f.select :achievement_name, options_for_select(@achievement_name_options),
+                  { include_blank: "Pick an achievement" }, { class: "field w-full mt-1" } %>
+          <% else %>
+            <%# The list is fed by achievements observed on linked characters —
+                until a first character refresh lands there is nothing to pick. %>
+            <%= f.select :achievement_name, [], { include_blank: "No achievements observed yet" },
+                  { class: "field w-full mt-1", disabled: true } %>
+          <% end %>
         </label>
         <label class="block" data-role-reward-form-target="field" data-kinds="mythic_plus pvp" hidden>
           <span class="text-xs text-muted-foreground">Minimum score</span>
@@ -83,11 +90,6 @@
           Rarely applies to achievement rules — achievements can't be un-earned.
         </span>
       </label>
-      <datalist id="achievement-name-options">
-        <% @achievement_name_options.each do |name| %>
-          <option value="<%= name %>"></option>
-        <% end %>
-      </datalist>
     <% end %>
   <% end %>
 <% end %>
