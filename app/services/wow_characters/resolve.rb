@@ -45,6 +45,13 @@ module WowCharacters
       return unresolved(claim.error) unless claim.ok?
 
       Result.new(character: claim.character, status: claim.status, input: @input)
+    rescue => e
+      # This service promises never to raise (see the class comment): the
+      # review message is repainted from whatever it returns, so an exception
+      # here would strand it on "Loading…" forever. Any unforeseen input that
+      # slips past validation degrades to "couldn't resolve", not a crash.
+      Rails.logger.warn("[wow] resolve failed for #{@input.inspect}: #{e.class}: #{e.message}")
+      unresolved("Couldn't look that character up. Double-check the Name-Realm.")
     end
 
     private
