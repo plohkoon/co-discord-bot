@@ -59,6 +59,12 @@ module Applications
         description: "#{application.applicant_mention} applied to **#{@team.name}**.",
         color: 0x5865F2
       )
+      # The officer review message (embed + persistent Accept/Reject buttons in
+      # the team's review channel) posts out of band over REST — one shared
+      # path whether the application came from the Discord modal or the public
+      # web form.
+      ReviewMessagePostJob.perform_later(guild_id: application.guild_id,
+                                         application_id: application.id)
       # Resolving costs a Blizzard round trip, so it happens after the commit
       # and out of band: the officers are already notified and the applicant
       # already has their acknowledgement.

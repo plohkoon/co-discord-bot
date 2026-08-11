@@ -9,18 +9,29 @@ module CoBot
 
     module_function
 
-    def post(bot:, team:, application:)
-      channel = bot.channel(team.review_channel_id)
-      return unless channel
-
-      content = "<@&#{team.officer_role_id}> new application for **#{team.name}**"
-      # Only ping the officer role — never @everyone or the applicant.
-      allowed = { parse: [], roles: [ team.officer_role_id ] }
-
-      # send_message(content, tts, embed, attachments, allowed_mentions, message_reference, components)
-      message = channel.send_message(content, false, pending_embed(team, application), nil, allowed, nil, decision_view(application))
-      application.update(review_channel_id: channel.id, review_message_id: message.id)
+    # Post the review message over REST — the one path both surfaces share
+    # (the Discord modal and the public web form both enqueue
+    # ReviewMessagePostJob after Applications::Submit commits). REST rather
+    # than the gateway so a process with no gateway connection (web, jobs) can
+    # send it; the buttons' custom_ids are restart-safe Components ids, so
+    # they work identically on a REST-posted message.
+    def post(team:, application:, api: Discord::BotApi.new)
+      channel_id = team.review_channel_id or return
+      message = api.create_message(channel_id, rest_payload(team, application))
+      application.update(review_channel_id: channel_id, review_message_id: message["id"])
       message
+    end
+
+    # The raw create-message payload: officer ping + pending embed + the
+    # persistent Accept/Reject/Pause buttons. Only the officer role may ping —
+    # never @everyone or the applicant.
+    def rest_payload(team, application)
+      {
+        "content" => "<@&#{team.officer_role_id}> new application for **#{team.name}**",
+        "embeds" => [ pending_embed(team, application).to_hash ],
+        "components" => decision_view(application).to_a,
+        "allowed_mentions" => { "parse" => [], "roles" => [ team.officer_role_id.to_s ] }
+      }
     end
 
     def pending_embed(team, application)

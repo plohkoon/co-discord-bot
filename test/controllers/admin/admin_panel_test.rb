@@ -4,7 +4,7 @@ module Admin
   class AdminPanelTest < ActionDispatch::IntegrationTest
     test "anonymous visitors are sent to login" do
       get admin_root_path
-      assert_redirected_to login_path
+      assert_redirected_to login_path(return_to: admin_root_path)
     end
 
     test "non-admin users are blocked" do

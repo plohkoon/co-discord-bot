@@ -45,6 +45,15 @@ class Team < ApplicationRecord
   validates :description, length: { maximum: 500 }
   validates_uniqueness_to_tenant :name, case_sensitive: false
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
+  # Human slug for the public apply URL (/apply/:guild_slug/teams/:team_slug).
+  # Generated from the team name at creation, unique per guild, and NOT
+  # regenerated on rename (shared links keep working) — leads edit it
+  # explicitly on the web team form instead.
+  before_validation :ensure_slug, on: :create
+  validates :slug, presence: true,
+                   length: { maximum: SlugGenerator::MAX_LENGTH },
+                   format: { with: Guild::SLUG_FORMAT, message: "can only use lowercase letters, numbers and hyphens" }
+  validates_uniqueness_to_tenant :slug, message: "is already taken by another team — pick a different one"
   # 0 lists an application the morning after it arrives; past 7 it would never
   # be listed at all, since the sweep auto-rejects at 7 days.
   validates :review_digest_after_days,
@@ -110,6 +119,18 @@ class Team < ApplicationRecord
   end
 
   private
+
+  # Creation only — a rename never touches an existing slug. Scoped to the
+  # guild the row is being created in (uniqueness is per guild, not global).
+  def ensure_slug
+    return if slug.present?
+
+    scope_guild_id = guild_id || ActsAsTenant.current_tenant&.id
+    self.slug = SlugGenerator.call(
+      name, fallback: "team",
+      taken: ->(candidate) { Team.unscoped.where(guild_id: scope_guild_id, slug: candidate).exists? }
+    )
+  end
 
   # Single-pass substitution so a team name that itself contains "{user}" can't
   # be re-expanded, and so a stray backslash in the name isn't read as a gsub

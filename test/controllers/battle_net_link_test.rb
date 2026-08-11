@@ -85,7 +85,7 @@ class BattleNetLinkTest < ActionDispatch::IntegrationTest
   test "signing out of the account page is required" do
     get account_path
 
-    assert_redirected_to login_path
+    assert_redirected_to login_path(return_to: account_path)
   end
 
   # --- The OAuth callback ---

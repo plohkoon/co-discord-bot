@@ -1,0 +1,30 @@
+<% content_for :title, "Apply — #{@guild.name} · co-bot" %>
+
+<%= render Ui::PageHeaderComponent.new(title: @guild.name, subtitle: "Team applications") %>
+
+<div class="space-y-8">
+  <% unless guild_member? %>
+    <%= render "public_guilds/join_banner", guild: @guild %>
+  <% end %>
+
+  <% if @grouped_teams.empty? %>
+    <%= render Ui::EmptyStateComponent.new do %>
+      This server has no teams set up yet.
+    <% end %>
+  <% else %>
+    <div class="space-y-10">
+      <% @grouped_teams.each do |category, teams| %>
+        <section>
+          <% if category %>
+            <h2 class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3"><%= category.name %></h2>
+          <% end %>
+          <div class="space-y-3">
+            <% teams.each do |team| %>
+              <%= render "public_guilds/team", guild: @guild, team: team %>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+    </div>
+  <% end %>
+</div>

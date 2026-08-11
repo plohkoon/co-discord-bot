@@ -11,9 +11,11 @@ module Commands
         # and submitting it (the roster button/pre-check guard fired earlier).
         return respond(team.resolved_closed_message) unless team.recruiting?
 
-        application = Applications::Submit.call(team: team, event: event)
+        # Submit enqueues the review-message post (ReviewMessagePostJob) —
+        # shared with the web apply page, so both surfaces produce the
+        # identical officer message.
+        Applications::Submit.call(team: team, event: event)
         respond("✅ Your application to **#{team.name}** was submitted! The team's officers will review it.")
-        CoBot::ReviewMessage.post(bot: event.bot, team: team, application: application)
       rescue Applications::Submit::AlreadyMember
         respond("You're already a member of **#{team.name}**.")
       rescue Applications::Submit::DuplicatePending

@@ -40,6 +40,18 @@ class ApplicationDecisionsTest < ActionDispatch::IntegrationTest
     assert @membership.reload.archived?
   end
 
+  test "accepting an applicant who isn't in the server yet still lands — role deferred to join" do
+    not_there = ->(**) { raise Memberships::MemberNotInGuild, "the member isn't in the server" }
+    stub_singleton_method(Memberships::RestRoleManager, :grant, not_there) do
+      post accept_path
+    end
+
+    assert_redirected_to guild_team_membership_path(@guild, @team, @membership)
+    assert_match(/role will be granted when they join/, flash[:notice])
+    assert @application.reload.accepted?
+    assert @membership.reload.active?
+  end
+
   test "a failed role grant reverts the application to pending" do
     boom = ->(**) { raise Memberships::RoleError, "the bot needs Manage Roles" }
     stub_singleton_method(Memberships::RestRoleManager, :grant, boom) do

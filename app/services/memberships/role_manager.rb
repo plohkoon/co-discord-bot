@@ -7,7 +7,11 @@ module Memberships
     def grant(bot:, server:, team:, discord_user_id:)
       role = server.role(team.team_role_id) or raise RoleError, "the team role no longer exists"
       ensure_manageable!(bot, server, role)
-      member = server.member(discord_user_id) or raise RoleError, "the member has left the server"
+      # Checked AFTER ensure_manageable! so permission/hierarchy problems always
+      # surface as plain RoleError — only a genuinely absent member (applied
+      # from the web before joining, or left) gets the expected-and-skippable
+      # subclass.
+      member = server.member(discord_user_id) or raise MemberNotInGuild, "the member isn't in the server"
       member.add_role(role, "co-bot: added to #{team.name}")
     end
 

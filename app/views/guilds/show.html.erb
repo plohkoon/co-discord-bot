@@ -93,6 +93,36 @@
 <% end %>
 
 <% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Public apply page", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    A shareable page listing this server's recruiting teams with web application forms.
+    Visitors sign in with Discord; anyone not in the server yet sees the invite link below
+    (each team page also has its own direct link).
+  </p>
+  <div class="rounded-xl border border-border bg-card p-5 space-y-4">
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Share link</span>
+      <%= text_field_tag :public_apply_url, public_guild_url(@guild.slug), readonly: true,
+            class: "field w-full mt-1 select-all" %>
+    </label>
+    <%= form_with model: @guild, url: guild_path(@guild), method: :patch, scope: :guild,
+          class: "flex flex-wrap items-end gap-3" do |f| %>
+      <label class="block grow">
+        <span class="text-xs text-muted-foreground">Link slug — lowercase letters, numbers and hyphens. Changing it breaks links you've already shared.</span>
+        <%= f.text_field :slug, required: true, maxlength: SlugGenerator::MAX_LENGTH,
+              pattern: "[a-z0-9]+(-[a-z0-9]+)*", class: "field w-full mt-1" %>
+      </label>
+      <label class="block grow">
+        <span class="text-xs text-muted-foreground">Discord invite link — shown to non-members (blank shows "ask a server admin" instead)</span>
+        <%= f.url_field :invite_url, placeholder: "https://discord.gg/…", class: "field w-full mt-1" %>
+      </label>
+      <%= f.submit "Save", class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+    <% end %>
+  </div>
+<% end %>
+<% end %>
+
+<% if can_manage? %>
 <%= render Ui::SectionComponent.new(title: "Log channels", classes: "mt-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Pick where co-bot posts activity. The <span class="text-foreground">Important</span> channel

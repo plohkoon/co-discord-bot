@@ -40,7 +40,9 @@ module Commands
       case result.status
       when :already_decided then "#{membership.mention}'s application was already handled by someone else."
       when :error then "⚠️ #{result.error}"
-      else "✅ #{membership.mention} #{verb}."
+      else
+        deferred = result.role_deferred ? " They're not in the server yet — their team role will be granted when they join." : ""
+        "✅ #{membership.mention} #{verb}.#{deferred}"
       end
     end
   end

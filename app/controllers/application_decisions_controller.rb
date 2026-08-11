@@ -57,7 +57,11 @@ class ApplicationDecisionsController < ApplicationController
     else
       # Repaint the Discord review message like a button decision would.
       Applications::RefreshReviewMessage.call(@application.reload)
-      redirect_to membership_path, notice: "Application #{decision == :accept ? "accepted" : "rejected"}."
+      notice = "Application #{decision == :accept ? "accepted" : "rejected"}."
+      if result.role_deferred
+        notice += " They're not in the Discord server yet — their team role will be granted when they join."
+      end
+      redirect_to membership_path, notice: notice
     end
   end
 

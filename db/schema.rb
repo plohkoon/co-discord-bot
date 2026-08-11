@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000200) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_100001) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -115,12 +115,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000200) do
     t.bigint "events_channel_id"
     t.bigint "id", null: false
     t.bigint "important_log_channel_id"
+    t.string "invite_url"
     t.bigint "log_channel_id"
     t.string "name", default: "", null: false
     t.datetime "removed_at"
+    t.string "slug"
     t.string "time_zone", default: "UTC", null: false
     t.datetime "updated_at", null: false
     t.index ["id"], name: "index_guilds_on_id", unique: true
+    t.index ["slug"], name: "index_guilds_on_slug", unique: true
   end
 
   create_table "membership_notes", force: :cascade do |t|
@@ -262,6 +265,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000200) do
     t.integer "review_digest_after_days", default: 1, null: false
     t.bigint "roster_channel_id"
     t.bigint "roster_message_id"
+    t.string "slug"
     t.integer "team_category_id"
     t.bigint "team_role_id", null: false
     t.integer "team_type_id"
@@ -270,6 +274,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000200) do
     t.string "wowaudit_team_name"
     t.datetime "wowaudit_verified_at"
     t.index ["guild_id", "name"], name: "index_teams_on_guild_id_and_name", unique: true
+    t.index ["guild_id", "slug"], name: "index_teams_on_guild_id_and_slug", unique: true
     t.index ["guild_id"], name: "index_teams_on_guild_id"
     t.index ["team_category_id"], name: "index_teams_on_team_category_id"
     t.index ["team_type_id"], name: "index_teams_on_team_type_id"

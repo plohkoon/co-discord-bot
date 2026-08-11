@@ -21,4 +21,19 @@ module ApplicationHelper
     params.merge!(guild_id: guild_id, disable_guild_select: true) if guild_id
     "https://discord.com/oauth2/authorize?#{params.to_query}"
   end
+
+  # Custom Discord emotes are stored in mention form (<:name:id> / <a:name:id>),
+  # which only renders inside Discord — on the web, show the image straight off
+  # Discord's CDN. Unicode emotes (or anything else) render as plain text.
+  CUSTOM_EMOTE = /\A<(?<animated>a?):\w+:(?<id>\d+)>\z/
+
+  def discord_emote_tag(emote)
+    return if emote.blank?
+
+    match = emote.match(CUSTOM_EMOTE)
+    return emote unless match
+
+    image_tag("https://cdn.discordapp.com/emojis/#{match[:id]}.#{match[:animated] == 'a' ? 'gif' : 'png'}",
+              alt: "", class: "inline-block w-5 h-5")
+  end
 end
