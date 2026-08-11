@@ -52,6 +52,14 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
   def applications_count = ActsAsTenant.without_tenant { TeamApplication.count }
 
+  # Mirror one officer into the team_officers table (the roster "Team Leads"
+  # source), the way Memberships::RoleSync would.
+  def add_officer(team, discord_user_id:, discord_username:)
+    ActsAsTenant.with_tenant(@guild) do
+      team.team_officers.create!(discord_user_id: discord_user_id, discord_username: discord_username)
+    end
+  end
+
   # --- Anonymous viewing (browsing is public; applying is not) ---
 
   test "an anonymous visitor sees the guild page: description, teams, sign-in CTA, no forms" do
@@ -101,6 +109,31 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to login_path
+  end
+
+  test "the Team Leads line is hidden from anonymous visitors on both public pages" do
+    officer = add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+
+    get public_guild_path(@guild.slug)
+    assert_response :success
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
+
+    get public_team_path(@guild.slug, @team.slug)
+    assert_response :success
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
+  end
+
+  test "the raw snowflake fallback is never leaked to anonymous visitors" do
+    # An officer without a cached username would otherwise render its Discord ID.
+    officer = add_officer(@team, discord_user_id: 112_233_445_566, discord_username: "")
+
+    get public_guild_path(@guild.slug)
+    assert_response :success
+    assert_no_match(officer.discord_user_id.to_s, response.body)
   end
 
   test "unknown and removed guilds still 404 for anonymous visitors" do
@@ -246,6 +279,32 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_match "Bravo is full.", response.body
     # Signed in — no sign-in CTA.
     assert_select "form[action='/auth/discord']", count: 0
+  end
+
+  test "signed-in visitors do see the Team Leads line" do
+    add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get public_guild_path(@guild.slug)
+    end
+
+    assert_response :success
+    assert_match "Team leads", response.body
+    assert_match "raidlead", response.body
+  end
+
+  test "a signed-in non-member also sees the Team Leads line" do
+    add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+    sign_in_as users(:member)
+
+    with_membership(false) do
+      get public_team_path(@guild.slug, @team.slug)
+    end
+
+    assert_response :success
+    assert_match "Team leads", response.body
+    assert_match "raidlead", response.body
   end
 
   test "the team page shows the questions and the character field like the Discord modal" do

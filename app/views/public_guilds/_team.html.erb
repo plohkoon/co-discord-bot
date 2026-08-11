@@ -2,7 +2,10 @@
     Locals: guild, team, and linked (whether a recruiting team gets an Apply
     link — false on the team's own page, where the form is right below). %>
 <% linked = local_assigns.fetch(:linked, true) %>
-<% lead_names = team.team_officers.ordered.map { |o| o.discord_username.presence || o.discord_user_id }.join(", ") %>
+<%# Staff Discord handles/IDs are shown only to signed-in visitors — this page
+    is a public recruiting link, and exposing lead usernames (or the snowflake
+    fallback) to anonymous crawlers is a disclosure the roster stats are not. %>
+<% lead_names = logged_in? ? team.team_officers.ordered.map { |o| o.discord_username.presence || o.discord_user_id }.join(", ") : nil %>
 <% details = [
      [ "Progression",   team.progression.presence ],
      [ "Requirements",  team.requirements.presence ],
