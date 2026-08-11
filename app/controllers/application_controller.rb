@@ -20,7 +20,18 @@ class ApplicationController < ActionController::Base
   def require_login
     return if logged_in?
 
-    redirect_to login_path, alert: "Please sign in with Discord to continue."
+    redirect_to login_path_with_return, alert: "Please sign in with Discord to continue."
+  end
+
+  # Where to send an anonymous visitor so they come back after signing in.
+  # Only GETs are worth returning to (a lost POST can't be replayed), and the
+  # root would be redundant. The value rides the login form's `origin` param
+  # into OmniAuth and is re-validated in SessionsController before any
+  # redirect — see SessionsController#safe_internal_path.
+  def login_path_with_return
+    return login_path unless request.get? && request.fullpath != root_path
+
+    login_path(return_to: request.fullpath)
   end
 
   # Guild ids the user can manage: captured at login, plus servers from the

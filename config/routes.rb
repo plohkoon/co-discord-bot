@@ -46,6 +46,13 @@ Rails.application.routes.draw do
     get ":model/:id", to: "resources#show",  as: :resource
   end
 
+  # --- Public apply pages (shareable links people paste in Discord) ---
+  # Sign-in required (with return-to), but deliberately NOT GuildScoping:
+  # the audience is people who aren't members yet. See PublicBaseController.
+  get  "apply/:guild_id", to: "public_guilds#show", as: :public_guild
+  get  "apply/:guild_id/teams/:team_id", to: "public_applications#new", as: :public_team
+  post "apply/:guild_id/teams/:team_id/applications", to: "public_applications#create", as: :public_team_applications
+
   # --- Dashboard (per-guild, tenant-scoped) ---
   resources :guilds, only: %i[show update] do
     post :recheck, on: :member

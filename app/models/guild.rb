@@ -16,10 +16,19 @@ class Guild < ApplicationRecord
   # from a separate process.
   after_update_commit :resync_event_posts, if: :saved_change_to_events_channel_id?
 
+  # The "Join this server" button on the public apply page. Only real Discord
+  # invite links (or blank — the page then shows an "ask an admin" line instead
+  # of a dead button); anything else is a typo or someone pointing members at
+  # an arbitrary site.
+  INVITE_URL_FORMAT = %r{\Ahttps://(www\.)?(discord\.gg|discord(app)?\.com/invite)/[A-Za-z0-9-]+/?\z}
+
   validates :id, presence: true
   # An unknown zone would silently fall back to UTC (see #tz) and misfire every
   # call-out day / digest — reject it instead of storing garbage.
   validate :time_zone_is_recognized
+  validates :invite_url, format: { with: INVITE_URL_FORMAT,
+                                   message: "must be a discord.gg or discord.com/invite link" },
+                         allow_blank: true
 
   # `removed_at` marks guilds the bot was kicked from. The row (and all team
   # data) is kept so everything is back if the bot is re-invited.

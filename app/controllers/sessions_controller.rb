@@ -2,7 +2,8 @@ class SessionsController < ApplicationController
   skip_before_action :require_login, only: %i[new create failure]
 
   def new
-    redirect_to root_path if logged_in?
+    @return_to = requested_return_path
+    redirect_to @return_to || root_path if logged_in?
   end
 
   # OAuth callback
@@ -28,7 +29,7 @@ class SessionsController < ApplicationController
     # until their next sign-in.
     user.record_discord_connections!(Discord::Connections.call(token: auth.credentials.token))
 
-    redirect_to root_path, notice: "Signed in as #{user.display_name}."
+    redirect_to after_sign_in_path, notice: "Signed in as #{user.display_name}."
   rescue => e
     Rails.logger.error("[web] sign-in failed: #{e.class}: #{e.message}")
     redirect_to login_path, alert: "Sign-in failed. Please try again."
@@ -41,5 +42,29 @@ class SessionsController < ApplicationController
 
   def failure
     redirect_to login_path, alert: "Discord sign-in was cancelled or failed."
+  end
+
+  private
+
+  # Return-to after login, via OmniAuth's origin mechanism: the login form's
+  # `origin` param lands in request.env["omniauth.origin"] on the callback.
+  # Validated down to a relative same-app path — never a full URL — so a
+  # crafted link can't turn the login flow into an open redirect.
+  def after_sign_in_path
+    safe_internal_path(request.env["omniauth.origin"]) || root_path
+  end
+
+  # The ?return_to the login page arrived with (from require_login), if safe to
+  # honor. Feeds the login form's hidden `origin` field.
+  def requested_return_path
+    safe_internal_path(params[:return_to])
+  end
+
+  # Accept only relative same-app paths: must start with "/", and not "//" or
+  # "/\" (both of which browsers treat as protocol-relative URLs to another
+  # host).
+  def safe_internal_path(value)
+    path = value.to_s
+    path if path.start_with?("/") && !path.start_with?("//", "/\\")
   end
 end

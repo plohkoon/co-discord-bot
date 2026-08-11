@@ -5,8 +5,11 @@
   <p class="mt-2 text-muted-foreground">Manage your Discord teams and review applications.</p>
 
   <div class="mt-8">
-    <%# data-turbo=false: full-page POST so the browser can follow OmniAuth's redirect to discord.com. %>
+    <%# data-turbo=false: full-page POST so the browser can follow OmniAuth's redirect to discord.com.
+        `origin` rides through OmniAuth and comes back as omniauth.origin on the
+        callback — that's how a visitor lands back on the page they wanted. %>
     <%= button_to "/auth/discord", method: :post, form: { data: { turbo: false } },
+          params: { origin: @return_to }.compact,
           class: Ui::ButtonComponent.classes(variant: :gold) do %>
       Sign in with Discord
     <% end %>

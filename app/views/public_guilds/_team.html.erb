@@ -1,0 +1,44 @@
+<%# One team's roster details, mirroring the Discord /team roster block.
+    Locals: guild, team, and linked (whether a recruiting team gets an Apply
+    link — false on the team's own page, where the form is right below). %>
+<% linked = local_assigns.fetch(:linked, true) %>
+<% lead_names = team.team_officers.ordered.map { |o| o.discord_username.presence || o.discord_user_id }.join(", ") %>
+<% details = [
+     [ "Progression",   team.progression.presence ],
+     [ "Requirements",  team.requirements.presence ],
+     [ "Date and time", team.date_and_time.presence ],
+     [ "Current needs", team.current_needs.presence ],
+     [ "Team leads",    lead_names.presence ]
+   ].select { |_, value| value } %>
+
+<div class="rounded-xl border border-border bg-card p-4">
+  <div class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <%= discord_emote_tag(team.emote) %>
+        <span class="font-medium text-foreground"><%= team.name %></span>
+        <% if team.team_type %>
+          <%= render Ui::BadgeComponent.new(variant: :gold) do %><%= team.team_type.name %><% end %>
+        <% end %>
+      </div>
+      <% if details.any? %>
+        <dl class="mt-2 space-y-1 text-sm">
+          <% details.each do |label, value| %>
+            <div class="flex gap-2">
+              <dt class="text-muted-foreground shrink-0"><%= label %>:</dt>
+              <dd class="text-foreground/90 min-w-0"><%= value %></dd>
+            </div>
+          <% end %>
+        </dl>
+      <% end %>
+    </div>
+    <% if team.recruiting? && linked %>
+      <%= render Ui::ButtonComponent.new(href: public_team_path(guild.id, team), size: :sm) do %>
+        Apply
+      <% end %>
+    <% end %>
+  </div>
+  <% unless team.recruiting? %>
+    <p class="mt-3 text-sm text-muted-foreground"><%= team.resolved_closed_message %></p>
+  <% end %>
+</div>

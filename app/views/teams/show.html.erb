@@ -130,6 +130,18 @@
 <% end %>
 
 <% if can_manage? || officer_of?(@team) %>
+<%= render Ui::SectionComponent.new(title: "Public apply link", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Share this link to let someone apply to <%= @team.name %> from the web — it asks them to sign in
+    with Discord, checks they're in this server (non-members get the server's invite link), and shows
+    this team's application form.
+  </p>
+  <%= text_field_tag :public_team_apply_url, public_team_url(@guild.id, @team), readonly: true,
+        class: "field w-full select-all" %>
+<% end %>
+<% end %>
+
+<% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Call-outs", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
     Upcoming absences members reported with <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/team absence</code>.

@@ -1,0 +1,61 @@
+<% content_for :title, "Apply — #{@team.name} · co-bot" %>
+
+<%= render Ui::PageHeaderComponent.new(title: @team.name,
+      back_href: public_guild_path(@guild.id), back_label: @guild.name,
+      subtitle: "Application — #{@guild.name}") %>
+
+<% if guild_member? %>
+  <div class="max-w-2xl space-y-6">
+    <%= render "public_guilds/team", guild: @guild, team: @team, linked: false %>
+
+    <% if @membership&.active? %>
+      <%= render Ui::EmptyStateComponent.new do %>
+        You're already a member of <span class="text-foreground"><%= @team.name %></span>.
+      <% end %>
+    <% elsif @membership&.pending? %>
+      <%= render Ui::EmptyStateComponent.new do %>
+        Your application to <span class="text-foreground"><%= @team.name %></span> is in —
+        the team's officers will get back to you. Watch your Discord DMs.
+      <% end %>
+    <% elsif !@team.recruiting? %>
+      <%# The closed notice already renders inside the team block above. %>
+    <% elsif @questions.empty? && !@team.collect_character? %>
+      <%= render Ui::EmptyStateComponent.new do %>
+        <span class="text-foreground"><%= @team.name %></span> has no application questions set up yet.
+      <% end %>
+    <% else %>
+      <%= form_with url: public_team_applications_path(@guild.id, @team), method: :post,
+            class: "rounded-xl border border-border bg-card p-5 space-y-4" do %>
+        <% if @team.collect_character? %>
+          <label class="block">
+            <span class="text-xs text-muted-foreground">Your character (Name-Realm)</span>
+            <%= text_field_tag "application[character]", params.dig(:application, :character),
+                  maxlength: 64, placeholder: "Thrall-Sargeras", id: nil, class: "field w-full mt-1" %>
+          </label>
+        <% end %>
+        <% @questions.each do |question| %>
+          <label class="block">
+            <span class="text-xs text-muted-foreground">
+              <%= question.label %><%= " (optional)" unless question.required %>
+            </span>
+            <% options = { required: question.required, minlength: question.min_length,
+                           maxlength: question.max_length || ApplicationQuestion::VALUE_MAX,
+                           placeholder: question.placeholder.presence,
+                           id: nil, class: "field w-full mt-1" }.compact %>
+            <% value = params.dig(:application, "q:#{question.id}") %>
+            <% if question.paragraph? %>
+              <%= text_area_tag "application[q:#{question.id}]", value, rows: 4, **options %>
+            <% else %>
+              <%= text_field_tag "application[q:#{question.id}]", value, **options %>
+            <% end %>
+          </label>
+        <% end %>
+        <div class="flex justify-end">
+          <%= submit_tag "Send application", class: Ui::ButtonComponent.classes(variant: :gold) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <%= render "public_guilds/join_card", guild: @guild %>
+<% end %>
