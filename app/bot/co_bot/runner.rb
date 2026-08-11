@@ -252,7 +252,8 @@ module CoBot
       return unless guild
 
       any = ActsAsTenant.with_tenant(guild) do
-        TeamMembership.active.where(discord_user_id: user_id).exists?
+        TeamMembership.active.where(discord_user_id: user_id)
+                      .joins(:team).where(teams: { active: true }).exists?
       end
       MemberJoinReconcileJob.perform_later(guild_id: guild.id, discord_user_id: user_id) if any
     end

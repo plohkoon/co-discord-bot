@@ -14,7 +14,7 @@
     <%= render "public_guilds/join_banner", guild: @guild %>
   <% end %>
 
-  <%= render "public_guilds/team", guild: @guild, team: @team, linked: false %>
+  <%= render "public_guilds/team", guild: @guild, team: @team, linked: false, viewer_is_member: guild_member? %>
 
   <% if !logged_in? %>
     <%# Where the form would be: browsing is free, applying takes a sign-in.
@@ -41,7 +41,7 @@
       <% if @team.collect_character? %>
         <label class="block">
           <span class="text-xs text-muted-foreground">Your character (Name-Realm)</span>
-          <%= text_field_tag "application[character]", params.dig(:application, :character),
+          <%= text_field_tag "application[character]", @submitted&.dig("character"),
                 maxlength: 64, placeholder: "Thrall-Sargeras", id: nil, class: "field w-full mt-1" %>
         </label>
       <% end %>
@@ -54,7 +54,7 @@
                          maxlength: question.max_length || ApplicationQuestion::VALUE_MAX,
                          placeholder: question.placeholder.presence,
                          id: nil, class: "field w-full mt-1" }.compact %>
-          <% value = params.dig(:application, "q:#{question.id}") %>
+          <% value = @submitted&.dig("q:#{question.id}") %>
           <% if question.paragraph? %>
             <%= text_area_tag "application[q:#{question.id}]", value, rows: 4, **options %>
           <% else %>

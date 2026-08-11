@@ -87,6 +87,10 @@ class PublicApplicationsController < PublicBaseController
 
   def load_form_state
     @questions = @team.application_questions.ordered.to_a
+    # Prior answers for re-rendering the form after a validation miss. Read
+    # through the shape-safe accessor rather than raw params, so a crafted
+    # non-hash `application` param can't blow up the view either.
+    @submitted = submitted_values
     # Looked up for every signed-in visitor — a non-member may already have a
     # pending application (that's the whole apply-before-joining flow), and the
     # page must show its state rather than offer the form again. Anonymous
@@ -110,11 +114,26 @@ class PublicApplicationsController < PublicBaseController
   end
 
   # Only the keys the form legitimately owns, read explicitly — never a
-  # permit-everything over raw params.
+  # permit-everything over raw params. The Discord modal path gets its length
+  # caps from Discord itself; this path has no modal, so the caps are enforced
+  # here (per-question max, falling back to the field ceiling) — otherwise an
+  # anonymous POST could store an unbounded answer. `character` is clamped to
+  # Discord's modal input width, matching the collect-character slot.
+  CHARACTER_INPUT_MAX = 100
+
   def submitted_values
-    form = params.fetch(:application, {})
-    values = @team.application_questions.ordered.to_h { |q| [ "q:#{q.id}", form["q:#{q.id}"].to_s ] }
-    values["character"] = form["character"].to_s if @team.collect_character?
+    # A legit nested `application[q:1]=…` parses to ActionController::Parameters;
+    # a crafted `application[]=x` parses to an Array (whose #[] takes an Integer,
+    # not a String). Coerce anything but Parameters to empty so an odd shape is
+    # a validation miss, not a 500.
+    raw = params[:application]
+    form = raw.is_a?(ActionController::Parameters) ? raw : {}
+    values = @team.application_questions.ordered.to_h do |q|
+      [ "q:#{q.id}", clamp(form["q:#{q.id}"], q.max_length || ApplicationQuestion::VALUE_MAX) ]
+    end
+    values["character"] = clamp(form["character"], CHARACTER_INPUT_MAX) if @team.collect_character?
     values
   end
+
+  def clamp(value, limit) = value.to_s[0, limit].to_s
 end

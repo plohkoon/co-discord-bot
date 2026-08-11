@@ -67,6 +67,14 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # Mirror one officer into the team_officers table (the roster "Team Leads"
+  # source), the way Memberships::RoleSync would.
+  def add_officer(team, discord_user_id:, discord_username:)
+    ActsAsTenant.with_tenant(@guild) do
+      team.team_officers.create!(discord_user_id: discord_user_id, discord_username: discord_username)
+    end
+  end
+
   # --- Anonymous viewing (browsing is public; applying is not) ---
 
   test "an anonymous visitor sees the guild page: description, teams, sign-in CTA, no forms" do
@@ -116,6 +124,31 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to login_path
+  end
+
+  test "the Team Leads line is hidden from anonymous visitors on both public pages" do
+    officer = add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+
+    get public_guild_path(@guild.slug)
+    assert_response :success
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
+
+    get public_team_path(@guild.slug, @team.slug)
+    assert_response :success
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
+  end
+
+  test "the raw snowflake fallback is never leaked to anonymous visitors" do
+    # An officer without a cached username would otherwise render its Discord ID.
+    officer = add_officer(@team, discord_user_id: 112_233_445_566, discord_username: "")
+
+    get public_guild_path(@guild.slug)
+    assert_response :success
+    assert_no_match(officer.discord_user_id.to_s, response.body)
   end
 
   test "unknown and removed guilds still 404 for anonymous visitors" do
@@ -261,6 +294,36 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_match "Bravo is full.", response.body
     # Signed in — no sign-in CTA.
     assert_select "form[action='/auth/discord']", count: 0
+  end
+
+  test "guild members do see the Team Leads line" do
+    add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get public_guild_path(@guild.slug)
+    end
+
+    assert_response :success
+    assert_match "Team leads", response.body
+    assert_match "raidlead", response.body
+  end
+
+  test "a signed-in NON-member does NOT see the Team Leads line" do
+    # A lead's handle is useless to someone outside the server (no DM, no
+    # mention) and still discloses staff identity — the gate is membership,
+    # not merely being signed in.
+    officer = add_officer(@team, discord_user_id: 987_654_321_000, discord_username: "raidlead")
+    sign_in_as users(:member)
+
+    with_membership(false) do
+      get public_team_path(@guild.slug, @team.slug)
+    end
+
+    assert_response :success
+    assert_no_match(/Team leads/, response.body)
+    assert_no_match(/raidlead/, response.body)
+    assert_no_match(officer.discord_user_id.to_s, response.body)
   end
 
   test "the team page shows the questions and the character field like the Discord modal" do
@@ -473,6 +536,34 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to public_team_path(@guild.slug, @closed_team.slug)
     assert_equal "Bravo is full.", flash[:alert]
+  end
+
+  test "an oversized answer is clamped server-side, not stored unbounded" do
+    ActsAsTenant.with_tenant(@guild) { @question.update!(max_length: 200) }
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      post public_team_applications_path(@guild.slug, @team.slug),
+           params: { application: { "q:#{@question.id}" => "x" * 5_000 } }
+    end
+
+    ActsAsTenant.without_tenant do
+      answer = TeamApplication.order(:id).last.application_answers.find_by(question_key: "why")
+      assert_equal 200, answer.answer.length
+    end
+  end
+
+  test "a crafted array-shaped application param is a validation miss, not a 500" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      assert_no_difference -> { applications_count } do
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: [ "x" ] }
+      end
+    end
+
+    assert_response :unprocessable_entity
   end
 
   test "missing required answers re-render the form instead of filing a blank application" do
