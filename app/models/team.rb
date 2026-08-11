@@ -14,9 +14,10 @@ class Team < ApplicationRecord
 
   # Free-form roster details shown in the /team roster directory (and the web
   # team page). All optional; rendered verbatim. `emote` decorates the heading
-  # (unicode or <:custom:id>); the rest are lines. The team-type line is NOT
+  # (unicode or <:custom:id>); `description` is a short bio rendered plain
+  # under the heading; the rest are labeled lines. The team-type line is NOT
   # free-form — it's picked from the guild's curated TeamType list.
-  ROSTER_FIELDS = %i[emote progression requirements date_and_time current_needs].freeze
+  ROSTER_FIELDS = %i[emote description progression requirements date_and_time current_needs].freeze
 
   # Per-team DM acknowledgements. Nullable — a blank column falls back to the
   # matching DEFAULT_* below. {team}/{user} are substituted at send time (see
@@ -39,6 +40,9 @@ class Team < ApplicationRecord
   REMINDER_FIELDS = %i[review_digest review_digest_after_days remind_ping].freeze
 
   validates :name, presence: true, length: { maximum: 100 }
+  # The other roster lines are uncapped, but the bio invites prose — cap it so
+  # one team's essay can't eat the roster message's 4000-char budget.
+  validates :description, length: { maximum: 500 }
   validates_uniqueness_to_tenant :name, case_sensitive: false
   validates :team_role_id, :officer_role_id, :review_channel_id, presence: true
   # 0 lists an application the morning after it arrives; past 7 it would never

@@ -63,6 +63,43 @@ class RosterMessageTest < ActiveSupport::TestCase
     BLOCK
   end
 
+  test "team_block renders the bio plain under the heading, before the labeled lines" do
+    team = create_team("Raiders", description: "Laid-back AOTC crew — alts welcome.", progression: "7/9 H")
+    block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
+
+    assert_equal <<~BLOCK.strip, block
+      ### <@&100>
+      Laid-back AOTC crew — alts welcome.
+      7/9 H
+      __Team Leads:__ —
+      __Date and Time:__ —
+      __Current Needs:__ —
+    BLOCK
+  end
+
+  test "a blank bio adds no line" do
+    team = create_team("Bare", description: " ")
+    block = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.team_block(team) }
+
+    assert_equal <<~BLOCK.strip, block
+      ### <@&100>
+      __Team Leads:__ —
+      __Date and Time:__ —
+      __Current Needs:__ —
+    BLOCK
+  end
+
+  test "bios count toward the char budget and can split messages" do
+    teams = 10.times.map { |i| create_team("Team #{i}", description: "x" * 500) }
+
+    payloads = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads(teams) }
+
+    assert_operator payloads.size, :>, 1
+    payloads.each do |payload, _|
+      assert_operator CoBot::RosterMessage.char_cost(payload["components"]), :<=, CoBot::RosterMessage::MAX_CHARS
+    end
+  end
+
   test "grouped orders categories by position, teams by position then name, uncategorized last" do
     pvp = create_category("PvP Teams", position: 2)
     pve = create_category("PvE Teams", position: 1)

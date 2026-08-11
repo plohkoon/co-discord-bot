@@ -50,6 +50,14 @@ class TeamTest < ActiveSupport::TestCase
     assert team.recruiting?
   end
 
+  test "the bio is capped at 500 characters so it can't eat the roster budget" do
+    assert team(description: "x" * 500).valid?
+
+    subject = team(name: "Beta")
+    subject.description = "x" * 501
+    assert_not subject.valid?
+  end
+
   test "recruiting_first lists recruiting teams before closed ones, position order within each group" do
     ActsAsTenant.with_tenant(guild) do
       %w[Closed-P1 Open-P3 Closed-P4 Open-P2].each do |name|
