@@ -507,6 +507,41 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     Rack::Attack.enabled = false
   end
 
+  test "a user at their hourly submission cap is turned away with a friendly message" do
+    sign_in_as users(:member), member: [ @guild ]
+    store = ActiveSupport::Cache::MemoryStore.new
+    store.write("apply-submissions:#{users(:member).id}",
+                PublicApplicationsController::APPLY_SUBMISSION_CAP, expires_in: 1.hour)
+
+    with_membership(true) do
+      stub_singleton_method(Rails, :cache, store) do
+        assert_no_difference -> { applications_count } do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "one more" } }
+        end
+      end
+    end
+
+    assert_redirected_to public_team_path(@guild.slug, @team.slug)
+    assert_match "a lot of applications recently", flash[:alert]
+  end
+
+  test "the submission cap counts up and lets a submission through under the limit" do
+    sign_in_as users(:member), member: [ @guild ]
+    store = ActiveSupport::Cache::MemoryStore.new
+
+    with_membership(true) do
+      stub_singleton_method(Rails, :cache, store) do
+        assert_difference -> { applications_count }, 1 do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "let me in" } }
+        end
+      end
+    end
+
+    assert_equal 1, store.read("apply-submissions:#{users(:member).id}")
+  end
+
   test "an active member of the team is told so instead of re-applying" do
     ActsAsTenant.with_tenant(@guild) do
       TeamMembership.create!(team: @team, discord_user_id: users(:member).discord_id,
