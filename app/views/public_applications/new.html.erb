@@ -1,7 +1,7 @@
 <% content_for :title, "Apply — #{@team.name} · co-bot" %>
 
 <%= render Ui::PageHeaderComponent.new(title: @team.name,
-      back_href: public_guild_path(@guild.id), back_label: @guild.name,
+      back_href: public_guild_path(@guild.slug), back_label: @guild.name,
       subtitle: "Application — #{@guild.name}") %>
 
 <div class="max-w-2xl space-y-6">
@@ -27,7 +27,7 @@
       <span class="text-foreground"><%= @team.name %></span> has no application questions set up yet.
     <% end %>
   <% else %>
-    <%= form_with url: public_team_applications_path(@guild.id, @team), method: :post,
+    <%= form_with url: public_team_applications_path(@guild.slug, @team.slug), method: :post,
           class: "rounded-xl border border-border bg-card p-5 space-y-4" do %>
       <% if @team.collect_character? %>
         <label class="block">

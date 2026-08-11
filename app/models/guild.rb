@@ -22,7 +22,20 @@ class Guild < ApplicationRecord
   # an arbitrary site.
   INVITE_URL_FORMAT = %r{\Ahttps://(www\.)?(discord\.gg|discord(app)?\.com/invite)/[A-Za-z0-9-]+/?\z}
 
+  # Human slug for the public apply URL (/apply/:guild_slug). Generated from
+  # the server name at creation, globally unique, and deliberately NOT
+  # regenerated on rename — shared links must keep working. Admins can edit it
+  # on the guild settings page. No reserved words: nothing else routes under
+  # /apply, so no slug can shadow another page.
+  SLUG_FORMAT = /\A[a-z0-9]+(-[a-z0-9]+)*\z/
+
+  before_validation :ensure_slug, on: :create
+
   validates :id, presence: true
+  validates :slug, presence: true,
+                   length: { maximum: SlugGenerator::MAX_LENGTH },
+                   format: { with: SLUG_FORMAT, message: "can only use lowercase letters, numbers and hyphens" },
+                   uniqueness: { message: "is already taken by another server — pick a different one" }
   # An unknown zone would silently fall back to UTC (see #tz) and misfire every
   # call-out day / digest — reject it instead of storing garbage.
   validate :time_zone_is_recognized
@@ -83,6 +96,14 @@ class Guild < ApplicationRecord
   end
 
   private
+
+  # Creation only — a rename never touches an existing slug.
+  def ensure_slug
+    return if slug.present?
+
+    self.slug = SlugGenerator.call(name, fallback: "guild",
+                                   taken: ->(candidate) { Guild.where(slug: candidate).exists? })
+  end
 
   # Both halves of the move are the job's problem: emptying the channel we left
   # and filling the one we moved to.

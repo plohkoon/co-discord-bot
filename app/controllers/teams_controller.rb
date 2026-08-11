@@ -72,10 +72,13 @@ class TeamsController < ApplicationController
     require_team_access
     return if performed?
 
-    attrs = params.require(:team).permit(:name, :position, :team_category_id, :team_type_id,
+    attrs = params.require(:team).permit(:name, :slug, :position, :team_category_id, :team_type_id,
                                          :recruiting, :closed_message, :wowaudit_api_key,
                                          *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS, *Team::REMINDER_FIELDS)
     attrs.delete(:position) unless can_manage?
+    # The public apply URL slug (lead-editable, like the rest of the team's
+    # own details). Strip only — the model validates format/uniqueness.
+    attrs[:slug] = attrs[:slug].strip if attrs.key?(:slug)
     # A third-party credential for the whole team — Manage Server, not lead.
     attrs.delete(:wowaudit_api_key) unless can_manage?
     # The form never renders the stored key back, so a blank field means "leave

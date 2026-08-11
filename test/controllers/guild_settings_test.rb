@@ -64,4 +64,36 @@ class GuildSettingsTest < ActionDispatch::IntegrationTest
     assert_redirected_to guild_path(@guild)
     assert_nil @guild.reload.invite_url
   end
+
+  # --- public apply slug ---
+
+  test "a manager can customize the public apply slug" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { slug: " our-raiders " } }
+
+    assert_redirected_to guild_path(@guild)
+    assert_equal "our-raiders", @guild.reload.slug
+  end
+
+  test "an invalid or taken slug is rejected with a friendly message" do
+    Guild.create!(id: 1, name: "Other", slug: "taken-name")
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { slug: "Bad Slug!" } }
+    assert_match(/lowercase letters/, flash[:alert])
+    assert_equal "raid-server", @guild.reload.slug
+
+    patch guild_path(@guild), params: { guild: { slug: "taken-name" } }
+    assert_match(/already taken/, flash[:alert])
+    assert_equal "raid-server", @guild.reload.slug
+  end
+
+  test "a plain member cannot change the slug" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { slug: "sneaky" } }
+
+    assert_equal "raid-server", @guild.reload.slug
+  end
 end

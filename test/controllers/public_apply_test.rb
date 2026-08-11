@@ -5,6 +5,8 @@ require "test_helper"
 # POST), and a web application form that goes through the same
 # Applications::Submit service as the Discord modal.
 class PublicApplyTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   GUILD_ID = 555_000_111_222_333_444
 
   setup do
@@ -53,16 +55,16 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
   # --- Sign-in gate + return-to ---
 
   test "an anonymous visitor is sent to login with a return path" do
-    get public_guild_path(GUILD_ID)
+    get public_guild_path(@guild.slug)
 
-    assert_redirected_to login_path(return_to: public_guild_path(GUILD_ID))
+    assert_redirected_to login_path(return_to: public_guild_path(@guild.slug))
   end
 
   test "the login page threads the return path into the OAuth form" do
-    get login_path(return_to: public_guild_path(GUILD_ID))
+    get login_path(return_to: public_guild_path(@guild.slug))
 
     assert_response :success
-    assert_select "form[action='/auth/discord'] input[name=origin][value=?]", public_guild_path(GUILD_ID)
+    assert_select "form[action='/auth/discord'] input[name=origin][value=?]", public_guild_path(@guild.slug)
   end
 
   test "the login page drops an unsafe return_to instead of forwarding it" do
@@ -75,7 +77,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
   end
 
   test "signing in lands the visitor back on the page they wanted" do
-    target = public_guild_path(GUILD_ID)
+    target = public_guild_path(@guild.slug)
     sign_in_via_login_form(users(:member), origin: target, member: [ @guild ])
 
     assert_redirected_to target
@@ -107,7 +109,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member)
 
     with_membership(false) do
-      get public_guild_path(GUILD_ID)
+      get public_guild_path(@guild.slug)
     end
 
     assert_response :success
@@ -115,14 +117,14 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", "https://discord.gg/abc123"
     # Teams are visible — outsiders are the recruiting audience.
     assert_match "Alpha", response.body
-    assert_select "a[href=?]", public_team_path(GUILD_ID, @team), text: /Apply/
+    assert_select "a[href=?]", public_team_path(@guild.slug, @team.slug), text: /Apply/
   end
 
   test "the join banner without an invite link says to ask an admin instead of a dead button" do
     sign_in_as users(:member)
 
     with_membership(false) do
-      get public_guild_path(GUILD_ID)
+      get public_guild_path(@guild.slug)
     end
 
     assert_response :success
@@ -134,7 +136,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member)
 
     with_membership(false) do
-      get public_team_path(GUILD_ID, @team)
+      get public_team_path(@guild.slug, @team.slug)
     end
 
     assert_response :success
@@ -149,11 +151,15 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     with_membership(false) do
       assert_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @team),
-             params: { application: { "q:#{@question.id}" => "let me in" } }
+        # The web submission produces the same officer review message as the
+        # Discord modal — one shared post job.
+        assert_enqueued_with(job: ReviewMessagePostJob) do
+          post public_team_applications_path(@guild.slug, @team.slug),
+               params: { application: { "q:#{@question.id}" => "let me in" } }
+        end
       end
 
-      assert_redirected_to public_team_path(GUILD_ID, @team)
+      assert_redirected_to public_team_path(@guild.slug, @team.slug)
       assert_match "make sure you join the Discord server", flash[:notice]
       follow_redirect!
       # The landing page repeats the join messaging (banner + invite button).
@@ -177,12 +183,12 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member), member: [ @guild ]
 
     with_membership(true) do
-      get public_guild_path(GUILD_ID)
+      get public_guild_path(@guild.slug)
     end
 
     assert_response :success
-    assert_select "a[href=?]", public_team_path(GUILD_ID, @team), text: /Apply/
-    assert_select "a[href=?]", public_team_path(GUILD_ID, @closed_team), count: 0
+    assert_select "a[href=?]", public_team_path(@guild.slug, @team.slug), text: /Apply/
+    assert_select "a[href=?]", public_team_path(@guild.slug, @closed_team.slug), count: 0
     assert_match "Bravo is full.", response.body
   end
 
@@ -190,7 +196,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member), member: [ @guild ]
 
     with_membership(true) do
-      get public_team_path(GUILD_ID, @team)
+      get public_team_path(@guild.slug, @team.slug)
     end
 
     assert_response :success
@@ -207,13 +213,13 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     with_membership(true) do
       assert_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @team),
+        post public_team_applications_path(@guild.slug, @team.slug),
              params: { application: { "character" => "Thrall-Sargeras",
                                       "q:#{@question.id}" => "I like raiding",
                                       "q:#{@optional.id}" => "" } }
       end
 
-      assert_redirected_to public_team_path(GUILD_ID, @team)
+      assert_redirected_to public_team_path(@guild.slug, @team.slug)
       follow_redirect!
       assert_match "Application sent", response.body
       # The form is gone: the page now shows the pending state.
@@ -235,16 +241,16 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member), member: [ @guild ]
 
     with_membership(true) do
-      post public_team_applications_path(GUILD_ID, @team),
+      post public_team_applications_path(@guild.slug, @team.slug),
            params: { application: { "q:#{@question.id}" => "first" } }
 
       assert_no_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @team),
+        post public_team_applications_path(@guild.slug, @team.slug),
              params: { application: { "q:#{@question.id}" => "second" } }
       end
     end
 
-    assert_redirected_to public_team_path(GUILD_ID, @team)
+    assert_redirected_to public_team_path(@guild.slug, @team.slug)
     assert_match "already have a pending application", flash[:alert]
   end
 
@@ -256,12 +262,12 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     sign_in_as users(:member), member: [ @guild ]
 
     with_membership(true) do
-      get public_team_path(GUILD_ID, @team)
+      get public_team_path(@guild.slug, @team.slug)
       assert_match "already a member", response.body
       assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
 
       assert_no_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @team),
+        post public_team_applications_path(@guild.slug, @team.slug),
              params: { application: { "q:#{@question.id}" => "again" } }
       end
     end
@@ -274,12 +280,12 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     with_membership(true) do
       assert_no_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @closed_team),
+        post public_team_applications_path(@guild.slug, @closed_team.slug),
              params: { application: {} }
       end
     end
 
-    assert_redirected_to public_team_path(GUILD_ID, @closed_team)
+    assert_redirected_to public_team_path(@guild.slug, @closed_team.slug)
     assert_equal "Bravo is full.", flash[:alert]
   end
 
@@ -288,7 +294,7 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
     with_membership(true) do
       assert_no_difference -> { applications_count } do
-        post public_team_applications_path(GUILD_ID, @team),
+        post public_team_applications_path(@guild.slug, @team.slug),
              params: { application: { "q:#{@question.id}" => "  " } }
       end
     end
@@ -299,20 +305,46 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
   # --- Guild states ---
 
-  test "an unknown guild 404s with a friendly page" do
+  test "an unknown guild slug 404s with a friendly page" do
     sign_in_as users(:member)
 
-    get public_guild_path(999)
+    get public_guild_path("no-such-server")
 
     assert_response :not_found
     assert_match "isn't in this server", response.body
+  end
+
+  test "raw ids 404 — the public URLs are slug-only" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    get "/apply/#{GUILD_ID}"
+    assert_response :not_found
+
+    with_membership(true) do
+      get "/apply/#{@guild.slug}/teams/#{@team.id}"
+    end
+    assert_redirected_to public_guild_path(@guild.slug)
+  end
+
+  test "the guild and team pages resolve by their slugs" do
+    assert_equal "raid-server", @guild.slug
+    assert_equal "alpha", @team.slug
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get "/apply/raid-server"
+      assert_response :success
+
+      get "/apply/raid-server/teams/alpha"
+      assert_response :success
+    end
   end
 
   test "a guild the bot was kicked from 404s too" do
     @guild.mark_removed!
     sign_in_as users(:member), member: [ @guild ]
 
-    get public_guild_path(GUILD_ID)
+    get public_guild_path(@guild.slug)
 
     assert_response :not_found
   end

@@ -49,9 +49,11 @@ Rails.application.routes.draw do
   # --- Public apply pages (shareable links people paste in Discord) ---
   # Sign-in required (with return-to), but deliberately NOT GuildScoping:
   # the audience is people who aren't members yet. See PublicBaseController.
-  get  "apply/:guild_id", to: "public_guilds#show", as: :public_guild
-  get  "apply/:guild_id/teams/:team_id", to: "public_applications#new", as: :public_team
-  post "apply/:guild_id/teams/:team_id/applications", to: "public_applications#create", as: :public_team_applications
+  # Addressed by human slugs (guilds.slug / teams.slug), never raw ids — only
+  # these public URLs are slug-driven; the internal dashboard keeps id routes.
+  get  "apply/:guild_slug", to: "public_guilds#show", as: :public_guild
+  get  "apply/:guild_slug/teams/:team_slug", to: "public_applications#new", as: :public_team
+  post "apply/:guild_slug/teams/:team_slug/applications", to: "public_applications#create", as: :public_team_applications
 
   # --- Dashboard (per-guild, tenant-scoped) ---
   resources :guilds, only: %i[show update] do

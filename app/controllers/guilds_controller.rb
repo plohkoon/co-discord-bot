@@ -35,11 +35,14 @@ class GuildsController < ApplicationController
   # channel; a non-blank id must come from the guild's real text-channel list.
   def update
     attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :events_channel_id,
-                                          :time_zone, :invite_url)
+                                          :time_zone, :invite_url, :slug)
     CHANNEL_SETTINGS.each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
     # Blank clears the invite; the model rejects anything that isn't a real
     # Discord invite URL.
     attrs[:invite_url] = attrs[:invite_url].strip.presence if attrs.key?(:invite_url)
+    # The public apply URL slug. Never blanked implicitly — the model's
+    # presence/format/uniqueness validations answer with a friendly alert.
+    attrs[:slug] = attrs[:slug].strip if attrs.key?(:slug)
 
     load_channel_options
     unless valid_channel_choices?(attrs)

@@ -15,7 +15,7 @@ class PublicApplicationsController < PublicBaseController
 
   def create
     unless @team.recruiting?
-      return redirect_to public_team_path(@guild.id, @team), alert: @team.resolved_closed_message
+      return redirect_to public_team_path(@guild.slug, @team.slug), alert: @team.resolved_closed_message
     end
 
     values = submitted_values
@@ -30,18 +30,18 @@ class PublicApplicationsController < PublicBaseController
     end
 
     Applications::Submit.call(team: @team, event: Applications::WebSubmission.new(user: current_user, values: values))
-    redirect_to public_team_path(@guild.id, @team), notice: confirmation_notice
+    redirect_to public_team_path(@guild.slug, @team.slug), notice: confirmation_notice
   rescue Applications::Submit::DuplicatePending
-    redirect_to public_team_path(@guild.id, @team), alert: "You already have a pending application to #{@team.name}."
+    redirect_to public_team_path(@guild.slug, @team.slug), alert: "You already have a pending application to #{@team.name}."
   rescue Applications::Submit::AlreadyMember
-    redirect_to public_team_path(@guild.id, @team), alert: "You're already a member of #{@team.name}."
+    redirect_to public_team_path(@guild.slug, @team.slug), alert: "You're already a member of #{@team.name}."
   end
 
   private
 
   def set_team
-    @team = Team.active.find_by(id: params[:team_id])
-    redirect_to public_guild_path(@guild.id), alert: "That team doesn't exist." if @team.nil?
+    @team = Team.active.find_by(slug: params[:team_slug])
+    redirect_to public_guild_path(@guild.slug), alert: "That team doesn't exist." if @team.nil?
   end
 
   def load_form_state

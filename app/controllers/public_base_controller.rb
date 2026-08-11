@@ -17,8 +17,10 @@ class PublicBaseController < ApplicationController
 
   private
 
+  # Slug lookup only — raw ids 404 (the links have never shipped with ids, so
+  # there's no legacy to honor).
   def set_guild
-    @guild = Guild.installed.find_by(id: params[:guild_id])
+    @guild = Guild.installed.find_by(slug: params[:guild_slug])
     render "public_guilds/not_installed", status: :not_found if @guild.nil?
   end
 

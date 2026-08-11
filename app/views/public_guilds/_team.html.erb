@@ -33,7 +33,7 @@
       <% end %>
     </div>
     <% if team.recruiting? && linked %>
-      <%= render Ui::ButtonComponent.new(href: public_team_path(guild.id, team), size: :sm) do %>
+      <%= render Ui::ButtonComponent.new(href: public_team_path(guild.slug, team.slug), size: :sm) do %>
         Apply
       <% end %>
     <% end %>
