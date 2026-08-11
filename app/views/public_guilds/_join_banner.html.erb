@@ -1,0 +1,27 @@
+<%# Shown to signed-in visitors who aren't in the Discord server yet — on the
+    guild page, the team page, and after a submit. Applying works without
+    joining (that's the recruiting flow); this banner makes the one remaining
+    requirement loud: join the server, or an acceptance can't add you. %>
+<div class="rounded-xl border border-gold/40 bg-gold/5 p-5">
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="min-w-0 flex-1">
+      <h2 class="font-semibold text-foreground">You're not in the Discord server yet</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        You can apply to <span class="text-foreground"><%= guild.name %></span>'s teams right now —
+        but you'll need to join the server on Discord to be added to a team when you're accepted.
+      </p>
+      <% if guild.invite_url.blank? %>
+        <p class="mt-1 text-sm text-muted-foreground">
+          This server hasn't set up an invite link — ask a server admin for an invite.
+        </p>
+      <% end %>
+    </div>
+    <% if guild.invite_url.present? %>
+      <div class="shrink-0">
+        <%= render Ui::ButtonComponent.new(href: guild.invite_url, variant: :gold) do %>
+          Join <%= guild.name %> on Discord
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -100,9 +100,9 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  # --- Membership branch ---
+  # --- Membership branch (a banner, never a gate) ---
 
-  test "a signed-in non-member sees the join card with the invite link, not the teams" do
+  test "a signed-in non-member sees the join banner with the invite link AND the teams" do
     @guild.update!(invite_url: "https://discord.gg/abc123")
     sign_in_as users(:member)
 
@@ -111,13 +111,14 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_match "not a member of this server", response.body
+    assert_match "not in the Discord server yet", response.body
     assert_select "a[href=?]", "https://discord.gg/abc123"
-    assert_no_match "Alpha", response.body
-    assert_select "a[href=?]", public_team_path(GUILD_ID, @team), count: 0
+    # Teams are visible — outsiders are the recruiting audience.
+    assert_match "Alpha", response.body
+    assert_select "a[href=?]", public_team_path(GUILD_ID, @team), text: /Apply/
   end
 
-  test "the join card without an invite link says to ask an admin instead of a dead button" do
+  test "the join banner without an invite link says to ask an admin instead of a dead button" do
     sign_in_as users(:member)
 
     with_membership(false) do
@@ -128,17 +129,46 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_match "ask a server admin", response.body
   end
 
-  test "a non-member cannot submit an application — enforced server-side" do
+  test "a non-member's team page shows the banner and the application form" do
+    @guild.update!(invite_url: "https://discord.gg/abc123")
     sign_in_as users(:member)
 
     with_membership(false) do
-      assert_no_difference -> { applications_count } do
+      get public_team_path(GUILD_ID, @team)
+    end
+
+    assert_response :success
+    assert_match "not in the Discord server yet", response.body
+    assert_select "a[href=?]", "https://discord.gg/abc123"
+    assert_select "input[name=?]", "application[q:#{@question.id}]"
+  end
+
+  test "a non-member can submit — the confirmation tells them to join the server" do
+    @guild.update!(invite_url: "https://discord.gg/abc123")
+    sign_in_as users(:member)
+
+    with_membership(false) do
+      assert_difference -> { applications_count } do
         post public_team_applications_path(GUILD_ID, @team),
              params: { application: { "q:#{@question.id}" => "let me in" } }
       end
+
+      assert_redirected_to public_team_path(GUILD_ID, @team)
+      assert_match "make sure you join the Discord server", flash[:notice]
+      follow_redirect!
+      # The landing page repeats the join messaging (banner + invite button).
+      assert_match "not in the Discord server yet", response.body
+      assert_select "a[href=?]", "https://discord.gg/abc123"
+      # And shows the pending state rather than the form again.
+      assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
     end
 
-    assert_redirected_to public_guild_path(GUILD_ID)
+    ActsAsTenant.without_tenant do
+      application = TeamApplication.order(:id).last
+      assert_equal users(:member).discord_id.to_s, application.discord_user_id.to_s
+      assert_equal [ "let me in", "" ], application.application_answers.order(:position).map(&:answer)
+      assert application.team_membership.pending?
+    end
   end
 
   # --- The member experience ---

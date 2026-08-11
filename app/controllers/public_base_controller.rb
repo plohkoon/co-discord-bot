@@ -5,8 +5,10 @@
 # Instead: sign-in is still required (with return-to, so the pasted link
 # survives the OAuth round trip), the guild is found without any access check
 # (removed/unknown guilds 404), actions run inside the guild tenant, and each
-# controller branches on live Discord membership itself — members see teams and
-# forms, non-members a join card.
+# controller checks live Discord membership itself. Membership is NOT a gate:
+# outsiders are the intended recruiting audience, so non-members see the teams
+# and can apply too — they just get a prominent "join the server" banner
+# (their team role is granted by MemberJoinReconcileJob when they arrive).
 class PublicBaseController < ApplicationController
   before_action :set_guild
   around_action :scope_to_guild
@@ -28,7 +30,8 @@ class PublicBaseController < ApplicationController
 
   # Live REST check (so "join, then reload" works without a re-login), falling
   # back to the membership snapshot captured at sign-in when Discord can't be
-  # asked. Memoized per request — the guild page and its POST both branch on it.
+  # asked. Memoized per request — it decides the join banner and the wording of
+  # the post-submit confirmation, never whether someone may apply.
   def guild_member?
     return @guild_member if defined?(@guild_member)
 
@@ -37,12 +40,5 @@ class PublicBaseController < ApplicationController
       user_id: current_user.discord_id,
       fallback: -> { can_view_guild?(@guild.id) }
     )
-  end
-
-  # Membership is enforced server-side on writes, not just hidden in the view.
-  def require_guild_membership
-    return if guild_member?
-
-    redirect_to public_guild_path(@guild.id), alert: "Join the Discord server first — applications are for members."
   end
 end

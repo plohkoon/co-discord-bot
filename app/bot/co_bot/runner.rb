@@ -118,6 +118,13 @@ module CoBot
 
       install_scheduled_events
 
+      # Someone joined the server. If they were accepted onto teams before
+      # joining (public web apply), they hold active memberships with no role —
+      # grant those now. No REST on the dispatch thread: just a Guild lookup
+      # and an enqueue; MemberJoinReconcileJob does the network work.
+      @bot.member_join do |event|
+        self.class.handle("member_join") { enqueue_join_reconcile(server: event.server, user_id: event.user&.id) }
+      end
       @bot.member_update do |event|
         self.class.handle("member_update") { Memberships::RoleSync.reconcile(server: event.server, member: event.user, roles: event.roles) }
       end
@@ -233,6 +240,21 @@ module CoBot
           Rails.logger.error("[co-bot] #{klass.name} failed: #{e.class}: #{e.message}")
         end
       end
+    end
+
+    # Enqueue only when the joiner actually has active memberships here — a
+    # cheap indexed read, so the common join (no history with any team) costs
+    # one query and no job.
+    def enqueue_join_reconcile(server:, user_id:)
+      return unless server && user_id
+
+      guild = Guild.find_by(id: server.id)
+      return unless guild
+
+      any = ActsAsTenant.with_tenant(guild) do
+        TeamMembership.active.where(discord_user_id: user_id).exists?
+      end
+      MemberJoinReconcileJob.perform_later(guild_id: guild.id, discord_user_id: user_id) if any
     end
 
     def with_tenant(event)

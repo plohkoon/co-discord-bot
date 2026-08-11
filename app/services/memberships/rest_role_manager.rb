@@ -12,7 +12,14 @@ module Memberships
     rescue Discord::BotApi::Forbidden
       raise RoleError, refusal_message
     rescue Discord::BotApi::NotFound
-      raise RoleError, "the member has left the server or the team role no longer exists"
+      # Discord's 404 doesn't say WHICH resource was unknown (member vs role),
+      # and the two cases must diverge: an absent member is expected for web
+      # applicants who haven't joined yet (MemberNotInGuild — accept proceeds,
+      # role deferred to the join reconcile), while a vanished role is a real
+      # configuration problem. One extra request, on the failure path only.
+      raise MemberNotInGuild, "the member isn't in the server" unless member_in_guild?(api, team.guild_id, discord_user_id)
+
+      raise RoleError, "the team role no longer exists"
     rescue Discord::BotApi::Error => e
       raise RoleError, "Discord API error (#{e.message})"
     end
@@ -30,6 +37,17 @@ module Memberships
 
     def refusal_message
       "the bot needs the Manage Roles permission with its highest role above the team role (Server Settings → Roles)"
+    end
+
+    def member_in_guild?(api, guild_id, discord_user_id)
+      api.guild_member(guild_id, discord_user_id)
+      true
+    rescue Discord::BotApi::Forbidden
+      # The bot can't see the guild — that says nothing about the member, and
+      # is a real refusal, not the expected "hasn't joined yet" case.
+      raise RoleError, refusal_message
+    rescue Discord::BotApi::NotFound
+      false
     end
   end
 end

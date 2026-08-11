@@ -2,7 +2,11 @@
 
 <%= render Ui::PageHeaderComponent.new(title: @guild.name, subtitle: "Team applications") %>
 
-<% if guild_member? %>
+<div class="space-y-8">
+  <% unless guild_member? %>
+    <%= render "public_guilds/join_banner", guild: @guild %>
+  <% end %>
+
   <% if @grouped_teams.empty? %>
     <%= render Ui::EmptyStateComponent.new do %>
       This server has no teams set up yet.
@@ -23,6 +27,4 @@
       <% end %>
     </div>
   <% end %>
-<% else %>
-  <%= render "public_guilds/join_card", guild: @guild %>
-<% end %>
+</div>

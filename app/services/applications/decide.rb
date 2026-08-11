@@ -10,7 +10,10 @@ module Applications
   #   * Compensating revert: if role assignment fails, the claim is rolled back
   #     to pending so an officer can retry.
   class Decide
-    Result = Struct.new(:status, :error, keyword_init: true)
+    # role_deferred: the accept landed but the role grant was skipped because
+    # the applicant isn't in the guild yet (applied from the public web page
+    # before joining) — MemberJoinReconcileJob grants it when they arrive.
+    Result = Struct.new(:status, :error, :role_deferred, keyword_init: true)
 
     def self.call(...) = new(...).call
 
@@ -28,10 +31,18 @@ module Applications
     def call
       return Result.new(status: :already_decided) unless claim!
 
+      role_deferred = false
       if @decision == :accept
         if @role_granter
           begin
             @role_granter.call(@application)
+          rescue Memberships::MemberNotInGuild
+            # Expected for someone who applied from the public web page before
+            # joining the server: the acceptance still lands, the grant is
+            # skipped, and MemberJoinReconcileJob assigns the role when they
+            # join. Any other RoleError (permissions, hierarchy, vanished
+            # role) still reverts and surfaces below.
+            role_deferred = true
           rescue Memberships::RoleError => e
             revert!
             return Result.new(status: :error, error: e.message)
@@ -43,7 +54,7 @@ module Applications
       end
 
       log_decision
-      Result.new(status: :ok)
+      Result.new(status: :ok, role_deferred: role_deferred)
     end
 
     private
