@@ -80,6 +80,20 @@ class RosterMessageTest < ActiveSupport::TestCase
     assert_equal %w[Loose], groups[2].last.map(&:name)
   end
 
+  test "grouped sinks non-recruiting teams to the bottom of their own category, position order within each side" do
+    pve = create_category("PvE Teams", position: 1)
+    teams = [
+      create_team("Closed Early", category: pve, position: 1, recruiting: false),
+      create_team("Open Late",    category: pve, position: 3),
+      create_team("Closed Late",  category: pve, position: 4, recruiting: false),
+      create_team("Open Early",   category: pve, position: 2)
+    ]
+
+    groups = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.grouped(teams) }
+
+    assert_equal [ "Open Early", "Open Late", "Closed Early", "Closed Late" ], groups[0].last.map(&:name)
+  end
+
   test "payloads builds one components-v2 message: headers, role-colored containers, inline apply buttons" do
     pve = create_category("PvE Teams ⚔️", position: 1)
     pvp = create_category("PvP Teams", position: 2)
@@ -143,14 +157,36 @@ class RosterMessageTest < ActiveSupport::TestCase
     assert_equal "applyto:#{team.id}", body.dig("accessory", "custom_id")
   end
 
-  test "a team closed to applications drops the Apply button and shows its message" do
+  test "a team closed to applications renders a disabled Apply button and shows its message" do
     team = create_team("Closed", recruiting: false, closed_message: "{team} is full.")
     body = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }
              .first.first["components"].first["components"].first
 
-    assert_equal TEXT_DISPLAY, body["type"] # a plain block, not a section
-    assert_nil body["accessory"]            # no Apply button
-    assert_includes body["content"], "### <@&100>" # still shows the team block…
-    assert_includes body["content"], "Closed is full." # …with the closed message ({team} expanded)
+    assert_equal SECTION, body["type"]
+    assert_equal true, body.dig("accessory", "disabled") # the button stays, greyed out
+    assert_equal "applyto:#{team.id}", body.dig("accessory", "custom_id")
+    content = body.dig("components", 0, "content")
+    assert_includes content, "### <@&100>"      # still shows the team block…
+    assert_includes content, "Closed is full."  # …with the closed message ({team} expanded)
+  end
+
+  test "a recruiting team's Apply button is not disabled" do
+    team = create_team("Open")
+    body = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }
+             .first.first["components"].first["components"].first
+
+    assert_not body["accessory"].key?("disabled")
+  end
+
+  test "closed teams count toward the component budget like any section" do
+    pve = create_category("PvE Teams", position: 1)
+    teams = 12.times.map { |i| create_team("Team #{format('%02d', i)}", category: pve, recruiting: false) }
+
+    payloads = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads(teams) }
+
+    assert_operator payloads.size, :>, 1
+    payloads.each do |payload, _|
+      assert_operator CoBot::RosterMessage.component_cost(payload["components"]), :<=, CoBot::RosterMessage::MAX_COMPONENTS
+    end
   end
 end

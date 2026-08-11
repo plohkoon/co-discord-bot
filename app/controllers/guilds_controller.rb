@@ -3,7 +3,7 @@ class GuildsController < ApplicationController
   before_action :require_guild_manager, only: %i[recheck update]
 
   def show
-    @teams = @guild.teams.order(:name).to_a
+    @teams = @guild.teams.recruiting_first.to_a
     # This member's own upcoming call-outs — how a Discord-only raider
     # self-cancels from the web (shown to every viewer, not just managers).
     @my_absences = current_user ? Absence.active.upcoming.for_user(current_user.discord_id).order(:absence_on).to_a : []

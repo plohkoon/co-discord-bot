@@ -47,6 +47,12 @@ class Team < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 7 }
 
   scope :active, -> { where(active: true) }
+  # Display ordering everywhere teams are listed: recruiting teams first,
+  # non-recruiting last, position order (then name, then id — stable) within
+  # each group. Display-only — don't use it where position is being assigned.
+  scope :recruiting_first, -> {
+    order(recruiting: :desc, position: :asc).order(Arel.sql("LOWER(name)")).order(:id)
+  }
   scope :with_wowaudit, -> { where.not(wowaudit_api_key: [ nil, "" ]) }
   scope :matching, ->(query) { query.to_s.strip.present? ? where("name LIKE ?", "%#{query.to_s.strip}%") : all }
 
