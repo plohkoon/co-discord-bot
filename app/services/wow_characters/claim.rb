@@ -11,6 +11,16 @@ module WowCharacters
   # can only ever name a character that actually exists, and lands on the same
   # row a later OAuth verification would.
   class Claim
+    # A Blizzard realm slug is lowercase alphanumerics and hyphens — anything
+    # else is a typo, not a realm. Enforced because the slug is interpolated
+    # straight into the Blizzard API request path (BattleNet::Client only
+    # escapes the character *name*): without this, a crafted realm like
+    # "..%2f..%2fdata%2fwow%2ftoken" would walk the request path, and an
+    # ordinary non-ASCII EU realm (Гордунни, Área-52) would raise
+    # URI::InvalidURIError deep in the client. Applicant input reaches here
+    # from the public apply page, so it is untrusted.
+    REALM_FORMAT = /\A[a-z0-9-]+\z/
+
     Result = Struct.new(:character, :status, :error, keyword_init: true) do
       def ok? = character.present? && error.nil?
     end
@@ -28,6 +38,7 @@ module WowCharacters
 
     def call
       return failure("Enter a character name and realm.") if @name.blank? || @realm_slug.blank?
+      return failure("That doesn't look like a realm name. Use the realm as it appears in-game, like Area 52.") unless REALM_FORMAT.match?(@realm_slug)
 
       profile = client.character_profile(@realm_slug, @name)
       blizzard_id = profile&.dig("id") or return failure("Blizzard didn't recognise that character.")

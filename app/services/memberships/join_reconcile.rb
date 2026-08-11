@@ -18,7 +18,8 @@ module Memberships
       return unless api.configured?
 
       memberships = ActsAsTenant.with_tenant(guild) do
-        TeamMembership.active.where(discord_user_id: discord_user_id).includes(:team).to_a
+        TeamMembership.active.where(discord_user_id: discord_user_id)
+                      .joins(:team).where(teams: { active: true }).includes(:team).to_a
       end
       return if memberships.empty?
 

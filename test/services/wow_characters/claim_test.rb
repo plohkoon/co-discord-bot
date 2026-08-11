@@ -68,6 +68,28 @@ module WowCharacters
       assert_not claim(realm: "").ok?
     end
 
+    # The realm is interpolated straight into Blizzard's request path, so a
+    # realm that isn't a clean slug must be rejected before any request — both
+    # a path-injection attempt and an ordinary non-ASCII realm would otherwise
+    # walk or crash the client.
+    test "a realm with path separators is rejected without a request" do
+      exploded = false
+      client = Class.new do
+        define_method(:character_profile) { |*| exploded = true }
+      end.new
+      result = Claim.call(user: users(:member), name: "Thrall",
+                          realm_slug: "../../../data/wow/token/index", client: client, now: NOW)
+
+      assert_not result.ok?
+      assert_not exploded, "must not reach Blizzard with an unsafe realm"
+      assert_equal 0, WowCharacter.count
+    end
+
+    test "a non-ASCII realm is rejected cleanly rather than raising" do
+      assert_not claim(realm: "área-52").ok?
+      assert_not claim(realm: "Гордунни").ok?
+    end
+
     test "re-claiming your own character is a no-op, not a duplicate" do
       claim
       result = claim

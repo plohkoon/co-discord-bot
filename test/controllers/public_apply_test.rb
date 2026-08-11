@@ -408,6 +408,34 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_equal "Bravo is full.", flash[:alert]
   end
 
+  test "an oversized answer is clamped server-side, not stored unbounded" do
+    ActsAsTenant.with_tenant(@guild) { @question.update!(max_length: 200) }
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      post public_team_applications_path(@guild.slug, @team.slug),
+           params: { application: { "q:#{@question.id}" => "x" * 5_000 } }
+    end
+
+    ActsAsTenant.without_tenant do
+      answer = TeamApplication.order(:id).last.application_answers.find_by(question_key: "why")
+      assert_equal 200, answer.answer.length
+    end
+  end
+
+  test "a crafted array-shaped application param is a validation miss, not a 500" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      assert_no_difference -> { applications_count } do
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: [ "x" ] }
+      end
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "missing required answers re-render the form instead of filing a blank application" do
     sign_in_as users(:member), member: [ @guild ]
 
