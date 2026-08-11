@@ -51,6 +51,13 @@ class TeamEditBioTest < ActiveSupport::TestCase
     event
   end
 
+  test "an officer toggles the character field off" do
+    event = run_edit({ "collect_character" => false })
+
+    assert_match(/Updated/, event.responses.first)
+    assert_not team.reload.collect_character?
+  end
+
   test "an officer sets the bio and the roster reflows" do
     event = run_edit({ "description" => "  Laid-back AOTC crew.  " })
 
