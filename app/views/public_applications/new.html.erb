@@ -7,7 +7,7 @@
 <div class="max-w-2xl space-y-6">
   <% if @guild.description.present? %>
     <%# The guild's blurb, small — the page belongs to the team. %>
-    <p class="text-sm text-muted-foreground whitespace-pre-line -mt-2"><%= @guild.description %></p>
+    <p class="text-sm text-muted-foreground whitespace-pre-line -mt-2"><%= discord_emotes(@guild.description) %></p>
   <% end %>
 
   <% if logged_in? && !guild_member? %>

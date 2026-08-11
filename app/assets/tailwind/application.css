@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
-/* Scan components (.rb) + views so their class strings are generated. */
+/* Scan components (.rb) + views + helpers so their class strings are generated. */
 @source "../../components";
 @source "../../views";
+@source "../../helpers";
 
 /* --- co-bot theme: warm charcoal + gold, ported from wow-rando-comp --- */
 

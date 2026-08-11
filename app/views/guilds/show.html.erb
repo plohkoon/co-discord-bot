@@ -27,7 +27,7 @@
           <div class="min-w-0">
             <div class="font-medium text-foreground"><%= team.name %></div>
             <% if team.description.present? %>
-              <div class="text-xs text-muted-foreground mt-0.5 truncate"><%= team.description %></div>
+              <div class="text-xs text-muted-foreground mt-0.5 truncate"><%= discord_emotes(team.description) %></div>
             <% end %>
             <div class="text-xs text-muted-foreground mt-0.5">
               <%= @active_counts[team.id].to_i %> active ·
