@@ -507,39 +507,27 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     Rack::Attack.enabled = false
   end
 
-  test "a user at their hourly submission cap is turned away with a friendly message" do
+  test "a user is capped after 10 submissions in the window, with a friendly message" do
     sign_in_as users(:member), member: [ @guild ]
-    store = ActiveSupport::Cache::MemoryStore.new
-    store.write("apply-submissions:#{users(:member).id}",
-                PublicApplicationsController::APPLY_SUBMISSION_CAP, expires_in: 1.hour)
 
     with_membership(true) do
-      stub_singleton_method(Rails, :cache, store) do
-        assert_no_difference -> { applications_count } do
-          post public_team_applications_path(@guild.slug, @team.slug),
-               params: { application: { "q:#{@question.id}" => "one more" } }
-        end
+      # 10 attempts fill the hour's allowance (the first files; #2–10 are
+      # duplicate-blocked by the re-apply guard but still counted).
+      10.times do |i|
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: { "q:#{@question.id}" => "try #{i}" } }
+        assert_no_match(/a lot of applications recently/, flash[:alert].to_s)
       end
-    end
 
-    assert_redirected_to public_team_path(@guild.slug, @team.slug)
-    assert_match "a lot of applications recently", flash[:alert]
-  end
-
-  test "the submission cap counts up and lets a submission through under the limit" do
-    sign_in_as users(:member), member: [ @guild ]
-    store = ActiveSupport::Cache::MemoryStore.new
-
-    with_membership(true) do
-      stub_singleton_method(Rails, :cache, store) do
-        assert_difference -> { applications_count }, 1 do
-          post public_team_applications_path(@guild.slug, @team.slug),
-               params: { application: { "q:#{@question.id}" => "let me in" } }
-        end
+      # The 11th within the hour is refused by the rate limiter before the
+      # action runs.
+      assert_no_difference -> { applications_count } do
+        post public_team_applications_path(@guild.slug, @team.slug),
+             params: { application: { "q:#{@question.id}" => "one more" } }
       end
+      assert_redirected_to public_team_path(@guild.slug, @team.slug)
+      assert_match "a lot of applications recently", flash[:alert]
     end
-
-    assert_equal 1, store.read("apply-submissions:#{users(:member).id}")
   end
 
   test "an active member of the team is told so instead of re-applying" do

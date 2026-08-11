@@ -7,23 +7,23 @@
 # get their role from MemberJoinReconcileJob when they join). Non-members see
 # the join banner here and a join reminder in the confirmation instead.
 class PublicApplicationsController < PublicBaseController
-  # A signed-in person can file this many applications an hour, across ALL
-  # teams and guilds. This is the per-USER layer — distinct from the per-IP
-  # burst throttle in config/initializers/rack_attack.rb ("apply/ip", 5/min):
-  # IP catches a host hammering us and account rotation; this catches one
-  # account applying everywhere and follows them across IPs (mobile/VPN) that
-  # the IP throttle can't. Counter lives in Rails.cache (Solid Cache in
-  # production — durable across the request, unlike the ephemeral IP counters).
-  APPLY_SUBMISSION_CAP = 10
-  APPLY_SUBMISSION_WINDOW = 1.hour
-
   before_action :set_team
   # Viewing the team page is public; submitting is not. An anonymous POST is
   # bounced into the login flow (no return_to — a lost POST can't be replayed)
-  # and creates nothing. Two rate-limit layers guard :create — the per-IP burst
-  # throttle out in Rack::Attack, and the per-user hourly cap below.
+  # and creates nothing.
   before_action :require_login, only: :create
-  before_action :enforce_submission_cap, only: :create
+
+  # The per-USER rate-limit layer — distinct from the per-IP burst throttle in
+  # config/initializers/rack_attack.rb ("apply/ip", 5/min). IP catches a host
+  # hammering us and account rotation; this catches one account applying
+  # everywhere and follows it across IPs (mobile/VPN) the IP throttle can't.
+  # Uses the app's configured cache (Solid Cache in production — durable).
+  # Declared after require_login, so an anonymous POST is bounced before it
+  # runs and current_user is always present in `by`.
+  rate_limit to: 10, within: 1.hour,
+             by: -> { current_user.id },
+             with: -> { redirect_to public_team_path(@guild.slug, @team.slug), alert: "You've sent a lot of applications recently. Please try again later." },
+             only: :create
 
   def new
     load_form_state
@@ -69,22 +69,6 @@ class PublicApplicationsController < PublicBaseController
   end
 
   private
-
-  # Per-user hourly submission cap. Read-then-write rather than #increment so
-  # it's portable across cache stores (null_store in test no-ops the read to
-  # 0, so this only bites when a real store is present); the tiny read/write
-  # race is irrelevant for an anti-spam cap. Counts every create attempt that
-  # gets past login — a spammer whose submits are duplicate-blocked still
-  # burns their allowance.
-  def enforce_submission_cap
-    key = "apply-submissions:#{current_user.id}"
-    if Rails.cache.read(key).to_i >= APPLY_SUBMISSION_CAP
-      redirect_to public_team_path(@guild.slug, @team.slug),
-                  alert: "You've sent a lot of applications recently. Please try again later."
-      return
-    end
-    Rails.cache.write(key, Rails.cache.read(key).to_i + 1, expires_in: APPLY_SUBMISSION_WINDOW)
-  end
 
   def set_team
     @team = Team.active.find_by(slug: params[:team_slug])

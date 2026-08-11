@@ -20,7 +20,11 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.cache_store = :null_store
+  # A real in-memory store (not :null_store) so ActionController's rate_limit —
+  # which reads config.cache_store — actually counts in tests instead of
+  # no-opping. Cleared before every test (see test_helper) so nothing bleeds
+  # between them.
+  config.cache_store = :memory_store
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
