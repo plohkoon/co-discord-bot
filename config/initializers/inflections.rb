@@ -14,3 +14,11 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# Zeitwerk infers `Omniauth` from lib/omniauth, but the gem's module (and our
+# strategy in lib/omniauth/strategies/battle_net.rb) spell it `OmniAuth`.
+# Without this, production/CI eager loading aborts boot with
+# "uninitialized constant Omniauth::Strategies::BattleNet".
+Rails.autoloaders.each do |autoloader|
+  autoloader.inflector.inflect("omniauth" => "OmniAuth")
+end

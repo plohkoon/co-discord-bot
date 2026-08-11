@@ -96,7 +96,10 @@ jobs:
           RAILS_ENV: test
           # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
           # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test
+        # zeitwerk:check eager loads the whole app the way production boot
+        # does — it catches constant/file-name mismatches that lazy-loading
+        # development and test runs never touch.
+        run: bin/rails db:test:prepare zeitwerk:check test
 
   system-test:
     runs-on: ubuntu-latest
