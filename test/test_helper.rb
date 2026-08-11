@@ -25,6 +25,11 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    # The test cache is a real :memory_store (so rate_limit counts) — wipe it
+    # before each test so cached role lists, health checks and rate-limit
+    # counters don't leak across tests.
+    setup { Rails.cache.clear }
+
     # Credentials for the integrations, keyed by service. Values are obviously
     # fake — anything reaching the network with these is a test that forgot to
     # inject a client.

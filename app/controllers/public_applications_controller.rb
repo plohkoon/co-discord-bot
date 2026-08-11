@@ -7,32 +7,22 @@
 # get their role from MemberJoinReconcileJob when they join). Non-members see
 # the join banner here and a join reminder in the confirmation instead.
 class PublicApplicationsController < PublicBaseController
-  # Resolves the rate-limit counter store at request time rather than binding
-  # it at class-load. Rails 8's `rate_limit` captures `store:` once, when the
-  # class body runs — in the test env that would freeze onto the :null_store
-  # (whose #increment always returns nil, silently no-opping the limiter),
-  # making the limit both untestable and inert. Delegating to Rails.cache per
-  # request tracks the live store (Solid Cache in production) and lets a test
-  # swap in a real store for the one case that exercises the limit.
-  LAZY_RATE_LIMIT_STORE = Object.new.tap do |store|
-    def store.increment(...) = Rails.cache.increment(...)
-  end
-  private_constant :LAZY_RATE_LIMIT_STORE
-
   before_action :set_team
   # Viewing the team page is public; submitting is not. An anonymous POST is
   # bounced into the login flow (no return_to — a lost POST can't be replayed)
   # and creates nothing.
   before_action :require_login, only: :create
-  # Throttle submissions per signed-in user. This runs AFTER require_login, so
-  # anonymous POSTs are already bounced (and never counted) and current_user is
-  # present. Slugs are enumerable, so one account could otherwise walk every
-  # team and spam each officer channel — a human applies to a handful of teams,
-  # 5/min is generous for that and punishing for a script.
-  rate_limit to: 5, within: 1.minute,
-             by: -> { current_user&.id },
-             store: LAZY_RATE_LIMIT_STORE,
-             with: -> { redirect_to public_team_path(@guild.slug, @team.slug), alert: "You're applying too fast — give it a minute and try again." },
+
+  # The per-USER rate-limit layer — distinct from the per-IP burst throttle in
+  # config/initializers/rack_attack.rb ("apply/ip", 5/min). IP catches a host
+  # hammering us and account rotation; this catches one account applying
+  # everywhere and follows it across IPs (mobile/VPN) the IP throttle can't.
+  # Uses the app's configured cache (Solid Cache in production — durable).
+  # Declared after require_login, so an anonymous POST is bounced before it
+  # runs and current_user is always present in `by`.
+  rate_limit to: 10, within: 1.hour,
+             by: -> { current_user.id },
+             with: -> { redirect_to public_team_path(@guild.slug, @team.slug), alert: "You've sent a lot of applications recently. Please try again later." },
              only: :create
 
   def new
