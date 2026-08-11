@@ -38,11 +38,21 @@ module Applications
     end
 
     test "submitting schedules no per-application timers — the daily sweep owns that" do
-      assert_enqueued_jobs 1 do # the confirmation DM, and nothing else
+      assert_enqueued_jobs 2 do # the review-message post + the confirmation DM, nothing else
         submit
       end
       assert_enqueued_jobs 0, only: ApplicationReminderJob
       assert_enqueued_jobs 0, only: ApplicationAutoRejectJob
+    end
+
+    test "submitting enqueues the shared review-message post — same job for modal and web" do
+      application = nil
+      assert_enqueued_with(job: ReviewMessagePostJob) do
+        application = submit
+      end
+
+      assert_enqueued_with(job: ReviewMessagePostJob,
+                           args: [ { guild_id: guild.id, application_id: application.id } ])
     end
 
     # The character is stored verbatim and resolved out of band, so a typo can

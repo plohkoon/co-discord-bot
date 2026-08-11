@@ -60,4 +60,62 @@ class ReviewMessageTest < ActiveSupport::TestCase
     assert_not_includes embed.title, "Paused"
     assert_equal CoBot::ReviewMessage::BRAND, embed.color
   end
+
+  # --- the shared REST post (modal and web submissions both go through it) ---
+
+  class FakeApi
+    attr_reader :created, :edited
+
+    def initialize
+      @created = []
+      @edited = []
+    end
+
+    def create_message(channel_id, payload)
+      @created << [ channel_id, payload ]
+      { "id" => "424242" }
+    end
+
+    def edit_message(channel_id, message_id, payload)
+      @edited << [ channel_id, message_id, payload ]
+      {}
+    end
+  end
+
+  test "post sends the officer ping + embed + buttons over REST and stores the ids" do
+    subject = application
+    api = FakeApi.new
+
+    CoBot::ReviewMessage.post(team: subject.team, application: subject, api: api)
+
+    channel_id, payload = api.created.sole
+    assert_equal subject.team.review_channel_id, channel_id
+    assert_includes payload["content"], "<@&#{subject.team.officer_role_id}>"
+    assert_includes payload["embeds"].sole[:title], "Application — Alpha"
+    ids = payload["components"].flat_map { |row| row[:components] }.map { |c| c[:custom_id] }
+    assert_includes ids, "decide:accept:#{subject.id}"
+    assert_includes ids, "decide:reject:#{subject.id}"
+    # Only the officer role may ping.
+    assert_equal({ "parse" => [], "roles" => [ subject.team.officer_role_id.to_s ] }, payload["allowed_mentions"])
+
+    subject.reload
+    assert_equal subject.team.review_channel_id, subject.review_channel_id
+    assert_equal 424242, subject.review_message_id
+  end
+
+  test "a decide-time repaint reaches the message post stored, wherever it came from" do
+    subject = application
+    api = FakeApi.new
+    CoBot::ReviewMessage.post(team: subject.team, application: subject, api: api)
+
+    ActsAsTenant.with_tenant(guild) do
+      subject.reload.update!(status: :accepted, decided_at: Time.current, decided_by_discord_id: 99)
+      Applications::RefreshReviewMessage.call(subject, api: api)
+    end
+
+    channel_id, message_id, payload = api.edited.sole
+    assert_equal subject.review_channel_id, channel_id
+    assert_equal 424242, message_id
+    assert_includes payload["embeds"].sole[:title], "Accepted"
+  end
 end
