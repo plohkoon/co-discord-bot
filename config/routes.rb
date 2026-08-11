@@ -53,6 +53,9 @@ Rails.application.routes.draw do
     # team-type vocabulary that teams pick from.
     resources :team_categories, only: %i[create update destroy]
     resources :team_types, only: %i[create update destroy]
+    # WoW role rewards (Manage Server only): rules that grant a Discord role
+    # from linked character data (achievements, M+ score, PvP rating).
+    resources :role_rewards, only: %i[create destroy]
     # Absence call-outs — a lead cancels any on their team, a raider cancels
     # their own (from the guild page). Creating them happens in Discord.
     resources :absences, only: :destroy
