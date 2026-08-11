@@ -97,6 +97,8 @@ module CoBot
       # style, so the team name line gets bumped back up for prominence. The
       # optional emote sits right before the role mention.
       lines = [ [ "###", team.emote.presence, "<@&#{team.team_role_id}>" ].compact.join(" ") ]
+      # The lead's bio, plain and unlabeled — it's prose, not a stat line.
+      lines << team.description if team.description.present?
       summary = [
         team.team_type && "*#{team.team_type.name}*",
         team.progression.presence,

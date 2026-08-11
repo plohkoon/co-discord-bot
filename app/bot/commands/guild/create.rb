@@ -11,6 +11,7 @@ module Commands
       string  :category, "Roster section header — pick an existing category", autocomplete: true
       string  :team_type, "Team type — pick from this server's list", autocomplete: true
       string  :emote, "Emoji shown before the team name in the roster (unicode or :name: from this server)"
+      string  :description, "Short bio shown under the team name in the roster (max 500 chars)"
       string  :progression, "Roster line (e.g. Currently 7/9 H)"
       string  :requirements, "Roster line (e.g. Req. iLvl - 250+)"
       string  :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"

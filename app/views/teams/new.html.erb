@@ -46,6 +46,12 @@
       Categories and team types come from this server's lists — edit them on the server page.
     </p>
     <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block sm:col-span-2">
+        <span class="text-xs text-muted-foreground">Bio (short blurb shown under the team name in the roster)</span>
+        <%= f.text_area :description, rows: 3, maxlength: 500,
+              placeholder: "e.g. A laid-back weekend team focused on AOTC — alts and returning players welcome.",
+              class: "field w-full mt-1" %>
+      </label>
       <label class="block">
         <span class="text-xs text-muted-foreground">Category (directory header)</span>
         <%= f.select :team_category_id, options_for_select(@team_categories.map { |c| [ c.name, c.id ] }, @team.team_category_id),
