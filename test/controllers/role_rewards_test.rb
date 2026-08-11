@@ -19,10 +19,14 @@ class RoleRewardsTest < ActionDispatch::IntegrationTest
     def guild_channels(_id) = []
   end
 
+  # ADMINISTRATOR = 0x8 = 8. A Manage-Server user must never be able to point
+  # the bot at a role carrying it (or any other dangerous bit).
   ROLES = [
     { "name" => "Cutting Edge", "id" => "111", "position" => 5, "managed" => false },
-    { "name" => "Gladiator",    "id" => "222", "position" => 4, "managed" => false },
-    { "name" => "co-bot",       "id" => "333", "position" => 9, "managed" => true } # bot-managed, filtered
+    { "name" => "Gladiator",    "id" => "222", "position" => 4, "managed" => false, "permissions" => "0" },
+    { "name" => "co-bot",       "id" => "333", "position" => 9, "managed" => true }, # bot-managed, filtered
+    { "name" => "Admins",       "id" => "444", "position" => 8, "managed" => false, "permissions" => "8" }, # Administrator
+    { "name" => "Mods",         "id" => "555", "position" => 6, "managed" => false, "permissions" => "268435456" } # Manage Roles
   ].freeze
 
   def with_fake_api(roles: ROLES, &block)
@@ -55,7 +59,9 @@ class RoleRewardsTest < ActionDispatch::IntegrationTest
   test "a role id outside the server's role list is rejected" do
     sign_in_as users(:member), manageable: [ @guild ]
 
-    [ "999", "333" ].each do |role_id| # unknown, and bot-managed
+    # unknown, bot-managed, Administrator, and Manage Roles — the last two are
+    # crafted POSTs naming a dangerous role that never appears in the picker.
+    [ "999", "333", "444", "555" ].each do |role_id|
       with_fake_api do
         post guild_role_rewards_path(@guild), params: { role_reward: {
           kind: "achievement", achievement_name: "Cutting Edge: Dimensius", discord_role_id: role_id
@@ -117,7 +123,10 @@ class RoleRewardsTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h2", text: /WoW role rewards/
     assert_select "select[name='role_reward[discord_role_id]'] option[value=?]", "111"
+    assert_select "select[name='role_reward[discord_role_id]'] option[value=?]", "222" # permissions "0" is fine
     assert_select "select[name='role_reward[discord_role_id]'] option[value=?]", "333", count: 0 # managed filtered
+    assert_select "select[name='role_reward[discord_role_id]'] option[value=?]", "444", count: 0 # Administrator filtered
+    assert_select "select[name='role_reward[discord_role_id]'] option[value=?]", "555", count: 0 # Manage Roles filtered
 
     sign_in_as users(:member), member: [ @guild ]
     with_fake_api { get guild_path(@guild) }

@@ -179,6 +179,7 @@ class TeamsController < ApplicationController
     @role_options = Rails.cache.fetch("discord/role_options/#{@guild.id}", expires_in: 60.seconds) do
       api.guild_roles(@guild.id)
          .reject { |r| r["managed"] || r["id"].to_s == @guild.id.to_s } # bot-managed roles + @everyone
+         .reject { |r| Discord::Permissions.dangerous_role?(r) } # never assign Admin/Manage/Ban/Kick roles
          .sort_by { |r| -r["position"].to_i }
          .map { |r| [ r["name"], r["id"].to_s ] }
     end
