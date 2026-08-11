@@ -13,6 +13,7 @@ class GuildLogChannelsTest < ActionDispatch::IntegrationTest
     def initialize(channels) = @channels = channels
     def configured? = false
     def guild_channels(_id) = @channels
+    def guild_roles(_id) = []
   end
 
   CHANNELS = [

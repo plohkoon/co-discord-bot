@@ -1,0 +1,93 @@
+<%# WoW role rewards (Manage Server): rules that grant a Discord role from
+    linked character data. Self-contained — the guild page renders this with
+    one line. Needs @role_rewards, @role_options, @achievement_name_options. %>
+<% role_names = @role_options.to_h { |name, id| [ id.to_s, name ] } %>
+<%= render Ui::SectionComponent.new(title: "WoW role rewards", classes: "mt-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Grant a Discord role automatically from WoW accomplishments — an earned achievement,
+    a Mythic+ score, or a PvP rating. Checks run hourly and when a rule is added.
+    Only members who've linked or claimed a WoW character are checked.
+    Deleting a rule stops future grants but keeps roles people already have.
+  </p>
+
+  <% if @role_rewards.any? %>
+    <div class="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden mb-4">
+      <% @role_rewards.each do |reward| %>
+        <div class="flex items-center gap-3 px-4 py-3">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-foreground">
+              <%= reward.summary %>
+              <span class="text-muted-foreground">→</span>
+              <span class="text-gold"><%= role_names.fetch(reward.discord_role_id.to_s, "role #{reward.discord_role_id}") %></span>
+            </div>
+            <div class="text-xs text-muted-foreground mt-0.5">
+              <%= pluralize(reward.role_reward_grants.count, "member") %> rewarded
+              <% if reward.auto_revoke? %>
+                · <span class="text-foreground">auto-removes</span> when no longer met
+              <% end %>
+            </div>
+          </div>
+          <%= button_to "Delete", guild_role_reward_path(@guild, reward), method: :delete,
+                class: Ui::ButtonComponent.classes(variant: :danger, size: :sm),
+                form: { data: { turbo_confirm: "Delete this rule? Roles already granted are kept." } } %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @role_options.empty? %>
+    <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 mb-4 text-sm text-foreground">
+      Couldn't load this server's roles from Discord — make sure the bot is in the server, then reload.
+    </div>
+  <% else %>
+    <%= form_with model: RoleReward.new, url: guild_role_rewards_path(@guild), scope: :role_reward,
+          class: "rounded-xl border border-border bg-card p-5 space-y-4",
+          data: { controller: "role-reward-form" } do |f| %>
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="block">
+          <span class="text-xs text-muted-foreground">When a member has…</span>
+          <%= f.select :kind,
+                options_for_select([ [ "Achievement earned", "achievement" ],
+                                     [ "Mythic+ score", "mythic_plus" ],
+                                     [ "PvP rating", "pvp" ] ]),
+                {}, class: "field mt-1",
+                data: { role_reward_form_target: "kind", action: "role-reward-form#toggle" } %>
+        </label>
+        <label class="block flex-1 min-w-48" data-role-reward-form-target="field" data-kinds="achievement">
+          <span class="text-xs text-muted-foreground">Achievement name (exact match)</span>
+          <%= f.text_field :achievement_name, list: "achievement-name-options",
+                placeholder: "Ahead of the Curve: …", class: "field w-full mt-1" %>
+        </label>
+        <label class="block" data-role-reward-form-target="field" data-kinds="mythic_plus pvp" hidden>
+          <span class="text-xs text-muted-foreground">Minimum score</span>
+          <%= f.number_field :threshold, min: 1, placeholder: "2500", class: "field w-28 mt-1" %>
+        </label>
+        <label class="block" data-role-reward-form-target="field" data-kinds="pvp" hidden>
+          <span class="text-xs text-muted-foreground">Bracket</span>
+          <%= f.select :pvp_bracket_type,
+                options_for_select([ [ "Any bracket", "" ] ] +
+                                   RoleReward::BRACKET_TYPES.map { |t| [ RoleReward::BRACKET_LABELS[t], t ] }),
+                {}, class: "field mt-1" %>
+        </label>
+        <label class="block">
+          <span class="text-xs text-muted-foreground">Grant this role</span>
+          <%= f.select :discord_role_id, options_for_select(@role_options),
+                { include_blank: "Pick a role" }, { class: "field mt-1", required: true } %>
+        </label>
+        <%= f.submit "Add rule", class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+      </div>
+      <label class="flex items-start gap-2 text-xs text-muted-foreground">
+        <%= f.check_box :auto_revoke, class: "mt-0.5" %>
+        <span>
+          Remove the role when the requirement is no longer met (e.g. after a season reset).
+          Rarely applies to achievement rules — achievements can't be un-earned.
+        </span>
+      </label>
+      <datalist id="achievement-name-options">
+        <% @achievement_name_options.each do |name| %>
+          <option value="<%= name %>"></option>
+        <% end %>
+      </datalist>
+    <% end %>
+  <% end %>
+<% end %>
