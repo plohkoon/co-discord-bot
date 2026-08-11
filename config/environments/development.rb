@@ -12,6 +12,11 @@ Rails.application.configure do
   # Show full error reports.
   config.consider_all_requests_local = true
 
+  # When this app is fronted by a tunnel or TLS proxy (see APP_URL in
+  # .env.example), let that host through Rails' host authorization — otherwise
+  # every request through it gets a "Blocked host" page.
+  config.hosts << URI(ENV["APP_URL"]).host if ENV["APP_URL"].present?
+
   # Enable server timing.
   config.server_timing = true
 

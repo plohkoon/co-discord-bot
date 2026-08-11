@@ -12,6 +12,23 @@ Rails.application.routes.draw do
   get   "/auth/discord/callback", to: "sessions#create"
   match "/auth/failure",          to: "sessions#failure", via: %i[get post]
 
+  # --- Account settings (per-person, not guild-scoped) ---
+  get "/account", to: "account#show", as: :account
+  # Battle.net OAuth links a WoW account to the signed-in user; the "Link"
+  # button POSTs to /auth/battle_net, handled by OmniAuth.
+  get "/auth/battle_net/callback", to: "battle_net_accounts#create"
+  # Claiming a character is deliberately separate from the Battle.net link —
+  # it needs no OAuth and produces an unverified record.
+  resources :wow_characters, only: %i[create destroy], path: "account/characters" do
+    # Nominate a main. Explicit, and never overridden by inference afterwards.
+    post :make_main, on: :member
+  end
+  resources :battle_net_accounts, only: :destroy, path: "account/battle-net" do
+    # Re-pull ilvl / M+ from Blizzard's public endpoints. Needs no OAuth — the
+    # app token does the work — so it stays available after the link expires.
+    post :refresh, on: :member
+  end
+
   # --- Admin panel (User::ADMIN_DISCORD_IDS only) ---
   namespace :admin do
     root "dashboard#index"
@@ -43,6 +60,9 @@ Rails.application.routes.draw do
       resources :questions, only: %i[create update destroy], controller: "team_questions"
       resources :memberships, only: :show do
         post :remove, on: :member
+        # Which character this member raids as on THIS team — a lead's call,
+        # distinct from the member's own main.
+        patch :character, on: :member, action: :set_character
         resources :notes, only: %i[create destroy], controller: "membership_notes"
         resources :applications, only: [], controller: "application_decisions" do
           member do

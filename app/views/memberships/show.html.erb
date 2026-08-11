@@ -26,6 +26,10 @@
 
 <div class="grid lg:grid-cols-3 gap-8">
   <div class="lg:col-span-2">
+    <%= render "raider_report", character: @character, membership: @membership,
+          guild: @guild, team: @team, candidates: @character_candidates,
+          unresolved_input: @unresolved_input %>
+
     <%= render Ui::SectionComponent.new(title: "Application history") do %>
       <% if @applications.empty? %>
         <p class="text-muted-foreground text-sm">No applications on record.</p>

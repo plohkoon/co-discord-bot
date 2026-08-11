@@ -1,0 +1,151 @@
+<%# The full character report — the "Show more detail" destination from the
+    Discord review message. Everything gathered about whoever this member plays
+    on this team, with its provenance visible rather than implied. %>
+<%= render Ui::SectionComponent.new(title: "Raider report", classes: "mb-8") do %>
+  <% if character.nil? %>
+    <%= render Ui::CardComponent.new do %>
+      <p class="text-sm text-muted-foreground">
+        <% if unresolved_input.present? %>
+          ⚠️ Couldn't find a character called
+          <span class="text-foreground"><%= unresolved_input %></span> — probably a typo.
+          They've been told; set the right one below once they reply.
+        <% elsif membership.user.nil? %>
+          co-bot has no record of this person yet. They haven't linked Battle.net,
+          claimed a character, or signed in — so there's nothing to report, which is
+          not the same as having nothing.
+        <% else %>
+          No character set for this member on this team.
+        <% end %>
+      </p>
+    <% end %>
+  <% else %>
+    <%= render Ui::CardComponent.new do %>
+      <div class="flex items-start gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="text-foreground font-medium">
+            <%= character.full_name %>
+            <% unless character.verified? %>
+              <%= render(Ui::BadgeComponent.new) { "unverified" } %>
+            <% end %>
+            <% if character.missing? %>
+              <%= render(Ui::BadgeComponent.new) { "renamed or transferred" } %>
+            <% end %>
+          </div>
+          <div class="text-xs text-muted-foreground mt-0.5">
+            <%= [ character.level && "Level #{character.level}",
+                  character.spec_and_class || character.playable_class,
+                  character.role&.upcase,
+                  character.guild_name && "<#{character.guild_name}>",
+                  character.region&.upcase ].compact.join(" · ") %>
+          </div>
+        </div>
+        <div class="flex gap-4 shrink-0 text-right">
+          <% [ [ character.ilvl, "ilvl" ], [ character.mythic_score, "m+" ], [ character.parse, "parse" ] ].each do |value, label| %>
+            <% next if value.nil? %>
+            <div>
+              <div class="text-sm text-foreground tabular-nums"><%= value %></div>
+              <div class="text-[10px] uppercase tracking-wide text-muted-foreground"><%= label %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% unless character.refreshed? %>
+        <p class="text-xs text-muted-foreground mt-3">⏳ Still gathering this character's data.</p>
+      <% end %>
+
+      <%# Raid parses, hardest tier first. The kill count travels with the
+          number: a 99 off one kill is a different claim from a 99 off thirty. %>
+      <% rankings = character.ranking_history.to_a %>
+      <% if rankings.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Parses</div>
+          <% rankings.first(4).each do |ranking| %>
+            <div class="text-sm text-foreground">
+              <%= ranking.summary %>
+              <span class="text-muted-foreground">· <%= ranking.zone_name %></span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%# Score across seasons — "2900+ for three straight seasons" says far
+          more than one current number. %>
+      <% history = character.season_history %>
+      <% if history.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+            Mythic+ by season<% if character.peak_score %> · peak <%= character.peak_score %><% end %>
+          </div>
+          <div class="text-sm text-foreground">
+            <%= history.map { |s| "#{s.season_name} #{s.score}#{" (#{s.primary_role})" if s.primary_role}" }.join(" · ") %>
+          </div>
+        </div>
+      <% end %>
+
+      <% progress = character.raid_progress.to_a %>
+      <% if progress.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Raid progression</div>
+          <div class="text-sm text-foreground">
+            <%= progress.map { |r| "#{r.summary} #{r.raid_name}" }.join(" · ") %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Only the achievement proves they did it WHILE IT WAS CURRENT, which is
+          the entire meaning of AOTC and Cutting Edge. %>
+      <% credentials = character.raid_credentials.to_a %>
+      <% if credentials.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Credentials</div>
+          <% credentials.first(6).each do |credential| %>
+            <div class="text-sm text-foreground"><%= credential.summary %></div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% pvp = character.pvp_ratings.to_a %>
+      <% if pvp.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">PvP</div>
+          <div class="text-sm text-foreground">
+            <%= pvp.first(4).map { |r| "#{r.display_bracket} #{r.rating}#{" #{r.tier_name}" if r.tier_name}" }.join(" · ") %>
+          </div>
+        </div>
+      <% end %>
+
+      <% professions = character.professions.to_a %>
+      <% if professions.any? %>
+        <div class="mt-4">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">Professions</div>
+          <div class="text-sm text-foreground"><%= professions.map(&:summary).join(" · ") %></div>
+        </div>
+      <% end %>
+
+      <div class="mt-4 flex gap-3 text-xs">
+        <%= link_to "Armory", character.armory_url, target: "_blank", rel: "noopener",
+              class: "text-muted-foreground hover:text-foreground transition" %>
+        <%= link_to "Raider.io", character.raider_io_url, target: "_blank", rel: "noopener",
+              class: "text-muted-foreground hover:text-foreground transition" %>
+        <%= link_to "Warcraft Logs", character.warcraft_logs_url, target: "_blank", rel: "noopener",
+              class: "text-muted-foreground hover:text-foreground transition" %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Leads correct a typo or a spec swap here. Scoped to characters the MEMBER
+      owns — a lead can fix an attribution, not invent one. %>
+  <% if candidates.any? %>
+    <%= form_with url: character_guild_team_membership_path(guild, team, membership), method: :patch,
+          class: "mt-3 flex flex-wrap items-end gap-3" do %>
+      <label class="flex-1 min-w-48">
+        <span class="text-xs text-muted-foreground">Character on this team</span>
+        <%= select_tag :wow_character_id,
+              options_from_collection_for_select(candidates, :id, :full_name, character&.id),
+              include_blank: "— none —", class: "field w-full mt-1" %>
+      </label>
+      <%= submit_tag "Save", class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+    <% end %>
+  <% end %>
+<% end %>

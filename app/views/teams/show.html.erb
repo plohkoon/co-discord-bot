@@ -66,6 +66,46 @@
 <% end %>
 <% end %>
 
+<%# wowaudit is a third-party credential for the whole team, so Manage Server —
+    not lead — matches how the guild-level integrations are gated. %>
+<% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "wowaudit", classes: "mb-12") do %>
+  <p class="text-xs text-muted-foreground -mt-1 mb-4">
+    Connects this team to its <a href="https://wowaudit.com" target="_blank" rel="noopener" class="text-gold hover:underline">wowaudit</a>
+    roster for preparation data — enchants, gems, vault and weekly activity. Find the key in wowaudit
+    under your team's settings (team admins only). Optional; everything else works without it.
+  </p>
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 space-y-3" do |f| %>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">wowaudit API key</span>
+      <%# Never rendered back into the page — a stored credential has no reason
+          to sit in HTML source. Blank means "leave it as it is". %>
+      <%= f.password_field :wowaudit_api_key, value: nil, autocomplete: "off",
+            placeholder: @team.wowaudit_configured? ? "Saved — type a new key to replace it" : "Paste the key from wowaudit",
+            class: "field w-full mt-1" %>
+    </label>
+    <% if @team.wowaudit_configured? %>
+      <%= button_to "Disconnect wowaudit", guild_team_path(@guild, @team), method: :patch,
+            params: { team: { wowaudit_api_key: "" }, clear_wowaudit: true },
+            form: { data: { turbo_confirm: "Disconnect wowaudit from #{@team.name}?" } },
+            class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+      <p class="text-xs <%= @team.wowaudit_verified? ? "text-emerald-300" : "text-light-red" %>">
+        <% if @team.wowaudit_verified? %>
+          Connected<%= " to #{@team.wowaudit_team_name}" if @team.wowaudit_team_name.present? %> ·
+          checked <%= time_ago_in_words(@team.wowaudit_verified_at) %> ago
+        <% else %>
+          Not connected — wowaudit rejected this key when it was last checked.
+        <% end %>
+      </p>
+    <% end %>
+    <div class="flex justify-end">
+      <%= f.submit "Save wowaudit key", class: Ui::ButtonComponent.classes(variant: :gold) %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
+
 <% if can_manage? || officer_of?(@team) %>
 <%= render Ui::SectionComponent.new(title: "Recruiting", classes: "mb-12") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">
