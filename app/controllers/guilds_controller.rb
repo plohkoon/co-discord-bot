@@ -3,7 +3,7 @@ class GuildsController < ApplicationController
   before_action :require_guild_manager, only: %i[recheck update]
 
   def show
-    @teams = @guild.teams.order(:name).to_a
+    @teams = @guild.teams.recruiting_first.to_a
     # This member's own upcoming call-outs — how a Discord-only raider
     # self-cancels from the web (shown to every viewer, not just managers).
     @my_absences = current_user ? Absence.active.upcoming.for_user(current_user.discord_id).order(:absence_on).to_a : []
@@ -21,6 +21,11 @@ class GuildsController < ApplicationController
       @team_categories = TeamCategory.ordered.to_a
       @team_types = TeamType.ordered.to_a
       load_channel_options
+      # WoW role rewards: the rules list, the role picker, and achievement-name
+      # suggestions (names the app has already seen, cross-tenant by design).
+      @role_rewards = RoleReward.order(:created_at).to_a
+      @achievement_name_options = WowCharacterAchievement.distinct_names
+      load_role_options
     end
   end
 
@@ -75,6 +80,20 @@ class GuildsController < ApplicationController
   rescue Discord::BotApi::Error => e
     Rails.logger.warn("[web] loading channel options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
     @channel_options = []
+  end
+
+  # Role picker for the role-rewards form. Mirrors TeamsController's role half
+  # (same cache key + shape); an empty list blocks adding rules safely.
+  def load_role_options
+    @role_options = Rails.cache.fetch("discord/role_options/#{@guild.id}", expires_in: 60.seconds) do
+      Discord::BotApi.new.guild_roles(@guild.id)
+                     .reject { |r| r["managed"] || r["id"].to_s == @guild.id.to_s } # bot-managed roles + @everyone
+                     .sort_by { |r| -r["position"].to_i }
+                     .map { |r| [ r["name"], r["id"].to_s ] }
+    end
+  rescue Discord::BotApi::Error => e
+    Rails.logger.warn("[web] loading role options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
+    @role_options = []
   end
 
   # Every submitted (non-blank) CHANNEL id must be one we fetched — rejects

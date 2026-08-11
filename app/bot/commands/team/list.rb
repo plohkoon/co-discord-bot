@@ -4,7 +4,7 @@ module Commands
       description "List this server's teams"
 
       def call
-        teams = current_guild.teams.active.order(:name)
+        teams = current_guild.teams.active.recruiting_first
         return respond("No teams yet. An admin can create one with `/team create`.") if teams.empty?
 
         lines = teams.map do |team|

@@ -10,6 +10,7 @@ class Guild < ApplicationRecord
   has_many :team_applications, dependent: :destroy
   has_many :team_categories, dependent: :destroy
   has_many :team_types, dependent: :destroy
+  has_many :role_rewards, dependent: :destroy
 
   # Pointing the events channel somewhere new moves the posts with it (and
   # clearing it takes them down). On commit, because the job re-reads the guild

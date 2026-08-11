@@ -81,12 +81,14 @@ module CoBot
       messages.map { |m| [ payload_for(m[:components]), m[:teams] ] }
     end
 
-    # Categories in position order; teams by position (then name) within one;
-    # uncategorized teams last, headerless.
+    # Categories in position order; within one, recruiting teams first (each
+    # side by position, then name) so closed teams sink to the bottom of their
+    # own section rather than reshuffling the directory; uncategorized teams
+    # last, headerless.
     def grouped(teams)
       teams.group_by(&:team_category)
            .sort_by { |category, _| category ? [ 0, category.position, category.id ] : [ 1, 0, 0 ] }
-           .map { |category, group| [ category, group.sort_by { |t| [ t.position, t.name.downcase ] } ] }
+           .map { |category, group| [ category, group.sort_by { |t| [ t.recruiting? ? 0 : 1, t.position, t.name.downcase ] } ] }
     end
 
     def team_block(team)
@@ -95,6 +97,8 @@ module CoBot
       # style, so the team name line gets bumped back up for prominence. The
       # optional emote sits right before the role mention.
       lines = [ [ "###", team.emote.presence, "<@&#{team.team_role_id}>" ].compact.join(" ") ]
+      # The lead's bio, plain and unlabeled — it's prose, not a stat line.
+      lines << team.description if team.description.present?
       summary = [
         team.team_type && "*#{team.team_type.name}*",
         team.progression.presence,
@@ -118,25 +122,28 @@ module CoBot
       }
     end
 
-    # A recruiting team gets a section with the inline Apply button as its
-    # accessory. A team closed to applications drops the button — a Components-V2
-    # section requires an accessory, so it renders as a plain text block with the
-    # team's "not recruiting" notice appended under the roster lines.
+    # Every team gets a section with the inline Apply button as its accessory.
+    # A team closed to applications keeps the button but greys it out
+    # (`disabled`) and appends its "not recruiting" notice under the roster
+    # lines — the ApplyFlow guard still rejects clicks on a stale message
+    # whose button is enabled.
     def team_body(team)
-      return team_section(team) if team.recruiting?
-
-      { "type" => TEXT_DISPLAY, "content" => "#{team_block(team)}\n\n#{team.resolved_closed_message}" }
-    end
-
-    def team_section(team)
+      content = team_block(team)
+      content += "\n\n#{team.resolved_closed_message}" unless team.recruiting?
       {
         "type" => SECTION,
-        "components" => [ { "type" => TEXT_DISPLAY, "content" => team_block(team) } ],
-        "accessory" => {
-          "type" => BUTTON, "style" => 1, "label" => "Apply",
-          "custom_id" => CoBot::CommandRegistry.custom_id("applyto", team.id)
-        }
+        "components" => [ { "type" => TEXT_DISPLAY, "content" => content } ],
+        "accessory" => apply_button(team)
       }
+    end
+
+    def apply_button(team)
+      button = {
+        "type" => BUTTON, "style" => 1, "label" => "Apply",
+        "custom_id" => CoBot::CommandRegistry.custom_id("applyto", team.id)
+      }
+      button["disabled"] = true unless team.recruiting?
+      button
     end
 
     def header(category)  = { "type" => TEXT_DISPLAY, "content" => "## #{category.name}" }

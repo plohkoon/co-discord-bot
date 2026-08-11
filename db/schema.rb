@@ -138,6 +138,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_100001) do
     t.index ["team_membership_id"], name: "index_membership_notes_on_team_membership_id"
   end
 
+  create_table "role_reward_grants", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "discord_user_id", null: false
+    t.datetime "granted_at", null: false
+    t.integer "role_reward_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["role_reward_id", "discord_user_id"], name: "index_role_reward_grants_on_role_reward_id_and_discord_user_id", unique: true
+  end
+
+  create_table "role_rewards", force: :cascade do |t|
+    t.string "achievement_name"
+    t.boolean "auto_revoke", default: false, null: false
+    t.datetime "created_at", null: false
+    t.bigint "discord_role_id", null: false
+    t.bigint "guild_id", null: false
+    t.string "kind", null: false
+    t.string "pvp_bracket_type"
+    t.integer "threshold"
+    t.datetime "updated_at", null: false
+    t.index ["guild_id"], name: "index_role_rewards_on_guild_id"
+  end
+
   create_table "team_applications", force: :cascade do |t|
     t.string "character_input"
     t.datetime "character_resolved_at"
@@ -603,6 +625,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_100001) do
   add_foreign_key "battle_net_accounts", "users"
   add_foreign_key "membership_notes", "guilds"
   add_foreign_key "membership_notes", "team_memberships"
+  add_foreign_key "role_reward_grants", "role_rewards"
+  add_foreign_key "role_rewards", "guilds"
   add_foreign_key "team_applications", "guilds"
   add_foreign_key "team_applications", "team_memberships"
   add_foreign_key "team_applications", "teams"

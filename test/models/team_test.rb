@@ -50,6 +50,36 @@ class TeamTest < ActiveSupport::TestCase
     assert team.recruiting?
   end
 
+  test "the bio is capped at 500 characters so it can't eat the roster budget" do
+    assert team(description: "x" * 500).valid?
+
+    subject = team(name: "Beta")
+    subject.description = "x" * 501
+    assert_not subject.valid?
+  end
+
+  test "recruiting_first lists recruiting teams before closed ones, position order within each group" do
+    ActsAsTenant.with_tenant(guild) do
+      %w[Closed-P1 Open-P3 Closed-P4 Open-P2].each do |name|
+        position = name[/\d/].to_i
+        Team.create!(name: name, team_role_id: 5, officer_role_id: 6, review_channel_id: 7,
+                     position: position, recruiting: name.start_with?("Open"))
+      end
+
+      assert_equal %w[Open-P2 Open-P3 Closed-P1 Closed-P4], Team.recruiting_first.pluck(:name)
+    end
+  end
+
+  test "recruiting_first breaks position ties by name then id, case-insensitively" do
+    ActsAsTenant.with_tenant(guild) do
+      %w[beta Alpha].each do |name|
+        Team.create!(name: name, team_role_id: 5, officer_role_id: 6, review_channel_id: 7, position: 1)
+      end
+
+      assert_equal %w[Alpha beta], Team.recruiting_first.pluck(:name)
+    end
+  end
+
   test "resolved_closed_message falls back to the default" do
     assert_equal Team::DEFAULT_CLOSED_MESSAGE, team.resolved_closed_message
   end

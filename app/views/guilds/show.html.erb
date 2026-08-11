@@ -24,8 +24,11 @@
       <% @teams.each do |team| %>
         <% openable = can_manage? || @led_team_ids.include?(team.id) %>
         <% row_body = capture do %>
-          <div>
+          <div class="min-w-0">
             <div class="font-medium text-foreground"><%= team.name %></div>
+            <% if team.description.present? %>
+              <div class="text-xs text-muted-foreground mt-0.5 truncate"><%= team.description %></div>
+            <% end %>
             <div class="text-xs text-muted-foreground mt-0.5">
               <%= @active_counts[team.id].to_i %> active ·
               <span class="<%= "text-gold" if @pending_counts[team.id].to_i.positive? %>"><%= @pending_counts[team.id].to_i %> pending</span> ·
@@ -181,6 +184,8 @@
   <% end %>
 <% end %>
 <% end %>
+
+<%= render "role_rewards" if can_manage? %>
 
 <% if can_manage? %>
 <%= render Ui::SectionComponent.new(title: "Roster settings", classes: "mt-12") do %>

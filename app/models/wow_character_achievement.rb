@@ -42,6 +42,12 @@ class WowCharacterAchievement < ApplicationRecord
   scope :raid_credentials, -> { where(category: %w[cutting_edge aotc]) }
   scope :pvp_credentials, -> { where(category: %w[gladiator pvp_title]) }
 
+  # Every distinct achievement name we've stored, across all characters.
+  # Deliberately cross-tenant (this table hangs off users, not guilds) — it
+  # only feeds the role-reward form's suggestion datalist, where "names the
+  # app has already seen" is exactly the useful set.
+  def self.distinct_names = distinct.order(:name).pluck(:name)
+
   # Which category an achievement belongs to, or nil if it isn't career-defining.
   def self.categorize(id, name)
     CATEGORIES.each { |category, matcher| return category if matcher.call(id.to_i, name.to_s) }
