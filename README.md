@@ -14,6 +14,14 @@ A modular Discord server-management bot with a first-class Rails web app, sharin
 
 ## Getting started
 
+**libvips** must be installed first — Active Storage loads its variant
+processor at boot, so without the native library the app will not start:
+
+```bash
+brew install vips        # macOS
+sudo apt install libvips # Debian/Ubuntu
+```
+
 ```bash
 bin/setup        # install gems and prepare the database
 cp .env.example .env   # then fill in the values below

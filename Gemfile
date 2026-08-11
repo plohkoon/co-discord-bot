@@ -1,7 +1,10 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3"
+# >= 8.1.3.1 is a floor, not a preference: 8.1.3 carries CVE-2026-66066
+# (arbitrary file read / RCE in Active Storage variant processing), and a
+# regenerated lockfile would otherwise be free to resolve back to it.
+gem "rails", "~> 8.1.3", ">= 8.1.3.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -41,10 +44,18 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.0"
-# image_processing 2.0 made its backends soft dependencies — pick vips (the
-# Rails default variant processor; the Dockerfile and CI install libvips).
-# require: false keeps boot from needing libvips — image_processing requires
-# it itself when a variant is actually processed.
+# image_processing 2.0 made its backends soft dependencies — pick vips, the
+# Rails default variant processor.
+#
+# libvips is needed to BOOT the app: Rails 8.1.3.1 loads the Active Storage
+# variant processor eagerly, so `require: false` no longer defers it the way it
+# once did. The Dockerfile and CI's test jobs install it; a development machine
+# needs `brew install vips` / `apt install libvips`.
+#
+# `require: false` still earns its place, though — it keeps ruby-vips off the
+# Bundler.require path for anything that loads this Gemfile WITHOUT booting
+# Rails. `bin/importmap audit` is exactly that, and CI's scan_js job runs it
+# without installing libvips. Removing the flag turns that job red.
 gem "ruby-vips", require: false
 
 # --- co-bot dependencies ---
