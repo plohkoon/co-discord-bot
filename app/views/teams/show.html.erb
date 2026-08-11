@@ -276,6 +276,25 @@
 <%= render Ui::SectionComponent.new(title: "Application questions", meta: "(#{@questions.size}/#{ApplicationQuestion::MAX_PER_TEAM})") do %>
   <p class="text-xs text-muted-foreground -mt-1 mb-4">Shown to applicants in the <code class="text-muted-foreground bg-secondary px-1 py-0.5 rounded">/apply</code> modal.</p>
 
+  <%= form_with model: @team, url: guild_team_path(@guild, @team), method: :patch, scope: :team,
+        class: "rounded-lg border border-border bg-card p-4 mb-4 space-y-3" do |f| %>
+    <label class="flex items-start gap-2 text-sm text-foreground">
+      <%= f.check_box :collect_character, class: "field-checkbox mt-0.5" %>
+      <span>
+        Ask applicants for their WoW character
+        <span class="block text-xs text-muted-foreground mt-0.5">
+          Adds a built-in character field to the application, so officers see gear, score and parses
+          alongside the answers. It takes one of the <%= ApplicationQuestion::MAX_PER_TEAM %> Discord
+          question slots — with all <%= ApplicationQuestion::MAX_PER_TEAM %> used by custom questions,
+          it stays off until one is removed.
+        </span>
+      </span>
+    </label>
+    <div class="flex justify-end">
+      <%= f.submit "Save", class: Ui::ButtonComponent.classes(variant: :gold, size: :sm) %>
+    </div>
+  <% end %>
+
   <div class="space-y-3">
     <% @questions.each do |question| %>
       <%= render "team_questions/form", guild: @guild, team: @team, question: question %>
