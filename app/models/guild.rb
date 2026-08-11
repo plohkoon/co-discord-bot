@@ -43,6 +43,9 @@ class Guild < ApplicationRecord
   validates :invite_url, format: { with: INVITE_URL_FORMAT,
                                    message: "must be a discord.gg or discord.com/invite link" },
                          allow_blank: true
+  # Short server blurb at the top of the public apply page. Same cap as the
+  # team bio — it invites prose, and the page shouldn't open with an essay.
+  validates :description, length: { maximum: 500 }
 
   # `removed_at` marks guilds the bot was kicked from. The row (and all team
   # data) is kept so everything is back if the bot is re-invited.

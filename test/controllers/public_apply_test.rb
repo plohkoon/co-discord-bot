@@ -52,13 +52,67 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
 
   def applications_count = ActsAsTenant.without_tenant { TeamApplication.count }
 
-  # --- Sign-in gate + return-to ---
+  # --- Anonymous viewing (browsing is public; applying is not) ---
 
-  test "an anonymous visitor is sent to login with a return path" do
+  test "an anonymous visitor sees the guild page: description, teams, sign-in CTA, no forms" do
+    @guild.update!(description: "A friendly raiding community.", invite_url: "https://discord.gg/abc123")
+    @team.update!(description: "We push keys and clear heroic weekly.")
+
     get public_guild_path(@guild.slug)
 
-    assert_redirected_to login_path(return_to: public_guild_path(@guild.slug))
+    assert_response :success
+    assert_match "Raid Server", response.body
+    assert_match "A friendly raiding community.", response.body
+    # Team cards render in full — names, bios, apply links, closed notices.
+    assert_match "Alpha", response.body
+    assert_match "We push keys and clear heroic weekly.", response.body
+    assert_match "Bravo is full.", response.body
+    assert_select "a[href=?]", public_team_path(@guild.slug, @team.slug), text: /Apply/
+    # The CTA POSTs into the OAuth flow with this page as the return origin.
+    assert_select "form[action='/auth/discord'] input[name=origin][value=?]", public_guild_path(@guild.slug)
+    # No join banner (that's for signed-in non-members) and no application form.
+    assert_no_match(/not in the Discord server yet/, response.body)
+    assert_select "input[name^='application[']", count: 0
   end
+
+  test "an anonymous visitor sees the team page with the CTA in place of the form" do
+    get public_team_path(@guild.slug, @team.slug)
+
+    assert_response :success
+    assert_match "Alpha", response.body
+    assert_select "form[action='/auth/discord'] input[name=origin][value=?]",
+                  public_team_path(@guild.slug, @team.slug)
+    assert_select "input[name=?]", "application[q:#{@question.id}]", count: 0
+    assert_select "input[name=?]", "application[character]", count: 0
+  end
+
+  test "a closed team's page shows its notice to anonymous visitors without a sign-in CTA" do
+    get public_team_path(@guild.slug, @closed_team.slug)
+
+    assert_response :success
+    assert_match "Bravo is full.", response.body
+    assert_select "form[action='/auth/discord']", count: 0
+  end
+
+  test "an anonymous POST is bounced to login and creates nothing" do
+    assert_no_difference -> { applications_count } do
+      post public_team_applications_path(@guild.slug, @team.slug),
+           params: { application: { "q:#{@question.id}" => "let me in" } }
+    end
+
+    assert_redirected_to login_path
+  end
+
+  test "unknown and removed guilds still 404 for anonymous visitors" do
+    get public_guild_path("no-such-server")
+    assert_response :not_found
+
+    @guild.mark_removed!
+    get public_guild_path(@guild.slug)
+    assert_response :not_found
+  end
+
+  # --- Sign-in flow + return-to ---
 
   test "the login page threads the return path into the OAuth form" do
     get login_path(return_to: public_guild_path(@guild.slug))
@@ -190,6 +244,8 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", public_team_path(@guild.slug, @team.slug), text: /Apply/
     assert_select "a[href=?]", public_team_path(@guild.slug, @closed_team.slug), count: 0
     assert_match "Bravo is full.", response.body
+    # Signed in — no sign-in CTA.
+    assert_select "form[action='/auth/discord']", count: 0
   end
 
   test "the team page shows the questions and the character field like the Discord modal" do

@@ -96,4 +96,47 @@ class GuildSettingsTest < ActionDispatch::IntegrationTest
 
     assert_equal "raid-server", @guild.reload.slug
   end
+
+  # --- public page description ---
+
+  test "a manager can set and clear the server description" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { description: "A friendly raiding community." } }
+    assert_redirected_to guild_path(@guild)
+    assert_equal "A friendly raiding community.", @guild.reload.description
+
+    patch guild_path(@guild), params: { guild: { description: "" } }
+    assert_nil @guild.reload.description
+  end
+
+  test "a plain member cannot set the description" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { description: "sneaky" } }
+
+    assert_redirected_to guild_path(@guild)
+    assert_nil @guild.reload.description
+  end
+
+  test "a description over 500 characters is rejected with the error shown" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    patch guild_path(@guild), params: { guild: { description: "x" * 501 } }
+
+    assert_redirected_to guild_path(@guild)
+    assert_match(/too long/, flash[:alert])
+    assert_nil @guild.reload.description
+  end
+
+  test "inline :name: shortcodes resolve in the description like the team roster lines" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    fake_resolve = ->(guild_id:, input:, **) { input.to_s.gsub(":swordguy:", "<:swordguy:9001>") }
+    stub_singleton_method(Discord::EmoteResolver, :resolve_text, fake_resolve) do
+      patch guild_path(@guild), params: { guild: { description: "We bring :swordguy: energy + :unknown:" } }
+    end
+
+    assert_equal "We bring <:swordguy:9001> energy + :unknown:", @guild.reload.description
+  end
 end
