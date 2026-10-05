@@ -4,7 +4,7 @@ source "https://rubygems.org"
 # >= 8.1.3.1 is a floor, not a preference: 8.1.3 carries CVE-2026-66066
 # (arbitrary file read / RCE in Active Storage variant processing), and a
 # regenerated lockfile would otherwise be free to resolve back to it.
-gem "rails", "~> 8.1.3", ">= 8.1.3.1"
+gem "rails", "~> 8.1.4"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -43,7 +43,7 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 2.0"
+gem "image_processing", "~> 2.1"
 # image_processing 2.0 made its backends soft dependencies — pick vips, the
 # Rails default variant processor.
 #
