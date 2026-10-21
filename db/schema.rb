@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_100000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -161,6 +161,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_110000) do
     t.index ["guild_id"], name: "index_role_rewards_on_guild_id"
   end
 
+  create_table "roster_posts", force: :cascade do |t|
+    t.text "category_ids"
+    t.bigint "channel_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "guild_id", null: false
+    t.text "message_ids"
+    t.datetime "updated_at", null: false
+    t.index ["guild_id", "channel_id"], name: "index_roster_posts_on_guild_id_and_channel_id", unique: true
+  end
+
   create_table "team_applications", force: :cascade do |t|
     t.string "character_input"
     t.datetime "character_resolved_at"
@@ -264,8 +274,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_110000) do
     t.bigint "review_channel_id", null: false
     t.boolean "review_digest", default: true, null: false
     t.integer "review_digest_after_days", default: 1, null: false
-    t.bigint "roster_channel_id"
-    t.bigint "roster_message_id"
     t.string "slug"
     t.integer "team_category_id"
     t.bigint "team_role_id", null: false
@@ -628,6 +636,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_110000) do
   add_foreign_key "membership_notes", "team_memberships"
   add_foreign_key "role_reward_grants", "role_rewards"
   add_foreign_key "role_rewards", "guilds"
+  add_foreign_key "roster_posts", "guilds"
   add_foreign_key "team_applications", "guilds"
   add_foreign_key "team_applications", "team_memberships"
   add_foreign_key "team_applications", "teams"

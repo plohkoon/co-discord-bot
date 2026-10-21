@@ -20,7 +20,7 @@ module Memberships
           end
 
           if sync_officer(team, member.id, username, officer: role_ids.include?(team.officer_role_id)) &&
-             team.roster_message_id
+             RosterPost.showing?(team)
             # The leads line changed — repaint the posted roster.
             RosterRefreshJob.perform_later(guild_id: guild.id)
           end
@@ -56,7 +56,7 @@ module Memberships
 
         departed_team_ids = TeamOfficer.where(discord_user_id: user_id).pluck(:team_id)
         TeamOfficer.where(discord_user_id: user_id).delete_all
-        if Team.where(id: departed_team_ids).where.not(roster_message_id: nil).exists?
+        if RosterPost.showing?(Team.where(id: departed_team_ids).to_a)
           RosterRefreshJob.perform_later(guild_id: guild.id)
         end
       end

@@ -24,14 +24,12 @@ module CoBot
     module_function
 
     # Post the directory, splitting into further messages only when a budget
-    # overflows. Records each team's message so edits can repaint it.
+    # overflows. Returns the posted message ids in order, for the caller to
+    # record on the RosterPost so edits can repaint them.
     def post(api:, channel_id:, teams:)
       colors = role_colors(api, teams)
-      payloads(teams, colors).each do |payload, included_teams|
-        message = api.create_message(channel_id, payload)
-        included_teams.each do |team|
-          team.update(roster_channel_id: channel_id, roster_message_id: message["id"])
-        end
+      payloads(teams, colors).map do |payload, _included_teams|
+        api.create_message(channel_id, payload)["id"].to_i
       end
     end
 
