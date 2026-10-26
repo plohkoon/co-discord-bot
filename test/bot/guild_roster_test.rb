@@ -111,16 +111,30 @@ class GuildRosterTest < ActiveSupport::TestCase
     assert_equal [ 902 ], roster_post.message_ids
   end
 
-  test "a roster with no matching teams posts a placeholder to fill in later" do
-    empty = ActsAsTenant.with_tenant(guild) { TeamCategory.create!(name: "Classic Teams") }
+  def contents(payload) = payload["components"].filter_map { |c| c["content"] }
 
-    event = run_roster("categories" => "Classic Teams")
+  test "a roster with no matching teams posts its headers to fill in later" do
+    empty = ActsAsTenant.with_tenant(guild) { TeamCategory.create!(name: "Classic") }
+
+    event = run_roster("categories" => "Classic")
 
     assert_match(/fills in as they're created/, event.responses.first)
     _, payload = @api.created.sole
-    assert_equal CoBot::RosterMessage::PLACEHOLDER, payload.dig("components", 0, "content")
+    assert_equal [ "## Classic", "No Classic teams listed yet - they'll appear here as they're created" ],
+                 contents(payload)
     assert_equal [ empty.id ], roster_post.category_ids
     assert_equal [ 901 ], roster_post.message_ids
+  end
+
+  test "an empty category keeps its header beside categories that have teams" do
+    ActsAsTenant.with_tenant(guild) { TeamCategory.create!(name: "Classic") }
+
+    run_roster("categories" => "PvE Teams, Classic")
+
+    _, payload = @api.created.sole
+    assert_equal [ "## PvE Teams", "## Classic", "No Classic teams listed yet - they'll appear here as they're created" ],
+                 contents(payload)
+    assert_equal %w[Raid], posted_team_names
   end
 
   test "autocomplete completes the last entry and skips ones already chosen" do

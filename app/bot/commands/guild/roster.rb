@@ -28,8 +28,8 @@ module Commands
         post = RosterPost.find_or_initialize_by(channel_id: channel_id)
         post.category_ids = categories.any? ? categories.map(&:id).uniq : nil
 
-        # An empty roster is fine: it posts a placeholder that RosterRefreshJob
-        # fills in as matching teams are created.
+        # An empty roster is fine: each category's header posts with a
+        # placeholder line that RosterRefreshJob fills in as teams are created.
         teams = post.teams_from(current_guild.teams.active.includes(:team_category, :team_type, :team_officers).to_a)
 
         scope = categories.any? ? " (#{category_list(categories)})" : ""
@@ -37,7 +37,8 @@ module Commands
         respond("📋 Posting the team directory#{scope} in <##{channel_id}>…#{empty}")
 
         replaced = post.message_ids
-        post.message_ids = CoBot::RosterMessage.post(api: api, channel_id: channel_id, teams: teams)
+        post.message_ids = CoBot::RosterMessage.post(api: api, channel_id: channel_id,
+                                                     teams: teams, categories: post.categories)
         post.save!
         delete_messages(channel_id, replaced)
       rescue Discord::BotApi::Error

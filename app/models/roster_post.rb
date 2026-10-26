@@ -26,4 +26,8 @@ class RosterPost < ApplicationRecord
   def covers?(team) = !filtered? || category_ids.include?(team.team_category_id)
 
   def teams_from(teams) = teams.select { |team| covers?(team) }
+
+  # The sections this roster always shows, teams or not: its filter's
+  # categories, or every category when unfiltered.
+  def categories = filtered? ? TeamCategory.where(id: category_ids).to_a : TeamCategory.all.to_a
 end

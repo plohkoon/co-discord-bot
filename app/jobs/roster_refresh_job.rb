@@ -32,7 +32,7 @@ class RosterRefreshJob < ApplicationJob
 
   def reflow(api, post, teams)
     colors = CoBot::RosterMessage.role_colors(api, teams)
-    payloads = CoBot::RosterMessage.payloads(teams, colors)
+    payloads = CoBot::RosterMessage.payloads(teams, colors, categories: post.categories)
     pending = post.message_ids.dup
     kept = []
 
