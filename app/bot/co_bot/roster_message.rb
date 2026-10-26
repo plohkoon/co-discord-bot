@@ -24,14 +24,12 @@ module CoBot
     module_function
 
     # Post the directory, splitting into further messages only when a budget
-    # overflows. Records each team's message so edits can repaint it.
-    def post(api:, channel_id:, teams:)
+    # overflows. Returns the posted message ids in order, for the caller to
+    # record on the RosterPost so edits can repaint them.
+    def post(api:, channel_id:, teams:, categories: [])
       colors = role_colors(api, teams)
-      payloads(teams, colors).each do |payload, included_teams|
-        message = api.create_message(channel_id, payload)
-        included_teams.each do |team|
-          team.update(roster_channel_id: channel_id, roster_message_id: message["id"])
-        end
+      payloads(teams, colors, categories: categories).map do |payload, _included_teams|
+        api.create_message(channel_id, payload)["id"].to_i
       end
     end
 
@@ -48,47 +46,64 @@ module CoBot
       {}
     end
 
+    # Shown under a category header while it has no teams, so a roster can be
+    # posted ahead of them with every section already in place; the next
+    # refresh swaps it for the first team.
+    def empty_category_text(category) = "No #{category.name} teams listed yet - they'll appear here as they're created"
+
+    # The whole roster when it has no categories and no teams to show.
+    PLACEHOLDER = "No teams listed yet - they'll appear here as they're created"
+
     # [[payload, [team, ...]], ...] respecting the component/char budgets.
-    def payloads(teams, colors = {})
+    # `categories` are the sections to show even when empty (a RosterPost's
+    # categories). Never empty: nothing at all is a single placeholder message.
+    def payloads(teams, colors = {}, categories: [])
       messages = []
       current = { components: [], chars: 0, teams: [] }
 
-      grouped(teams).each do |category, group|
+      grouped(teams, categories).each do |category, group|
         header_pending = category
-        group.each do |team|
-          section = team_container(team, colors)
+        entries = if group.empty?
+          [ [ nil, text(empty_category_text(category)) ] ]
+        else
+          group.map { |team| [ team, team_container(team, colors) ] }
+        end
+        entries.each do |team, block|
           addition = []
           if header_pending
             addition << separator if current[:components].any?
             addition << header(category)
           end
-          addition << section
+          addition << block
 
-          if current[:teams].any? && overflows?(current, addition)
+          if current[:components].any? && overflows?(current, addition)
             messages << current
             current = { components: [], chars: 0, teams: [] }
-            addition = (category ? [ header(category) ] : []) + [ section ]
+            addition = (category ? [ header(category) ] : []) + [ block ]
           end
 
           current[:components].concat(addition)
           current[:chars] += char_cost(addition)
-          current[:teams] << team
+          current[:teams] << team if team
           header_pending = false
         end
       end
 
-      messages << current if current[:teams].any?
+      messages << current if current[:components].any?
+      return [ [ payload_for([ text(PLACEHOLDER) ]), [] ] ] if messages.empty?
+
       messages.map { |m| [ payload_for(m[:components]), m[:teams] ] }
     end
 
     # Categories in position order; within one, recruiting teams first (each
     # side by position, then name) so closed teams sink to the bottom of their
     # own section rather than reshuffling the directory; uncategorized teams
-    # last, headerless.
-    def grouped(teams)
-      teams.group_by(&:team_category)
-           .sort_by { |category, _| category ? [ 0, category.position, category.id ] : [ 1, 0, 0 ] }
-           .map { |category, group| [ category, group.sort_by { |t| [ t.recruiting? ? 0 : 1, t.position, t.name.downcase ] } ] }
+    # last, headerless. `categories` with no teams still get a (empty) group.
+    def grouped(teams, categories = [])
+      groups = teams.group_by(&:team_category)
+      categories.each { |category| groups[category] ||= [] }
+      groups.sort_by { |category, _| category ? [ 0, category.position, category.id ] : [ 1, 0, 0 ] }
+            .map { |category, group| [ category, group.sort_by { |t| [ t.recruiting? ? 0 : 1, t.position, t.name.downcase ] } ] }
     end
 
     def team_block(team)
@@ -146,7 +161,8 @@ module CoBot
       button
     end
 
-    def header(category)  = { "type" => TEXT_DISPLAY, "content" => "## #{category.name}" }
+    def header(category)  = text("## #{category.name}")
+    def text(content)     = { "type" => TEXT_DISPLAY, "content" => content }
     def separator         = { "type" => SEPARATOR, "divider" => true, "spacing" => 2 }
 
     def payload_for(components)
