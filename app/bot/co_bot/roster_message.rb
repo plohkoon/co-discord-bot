@@ -46,7 +46,12 @@ module CoBot
       {}
     end
 
+    # Shown while a roster has no teams to list, so it can be posted ahead of
+    # them: the next refresh edits this message into the first directory one.
+    PLACEHOLDER = "*No teams listed yet — they'll appear here as they're created.*"
+
     # [[payload, [team, ...]], ...] respecting the component/char budgets.
+    # Never empty: no teams is a single placeholder message.
     def payloads(teams, colors = {})
       messages = []
       current = { components: [], chars: 0, teams: [] }
@@ -76,6 +81,8 @@ module CoBot
       end
 
       messages << current if current[:teams].any?
+      return [ [ payload_for([ { "type" => TEXT_DISPLAY, "content" => PLACEHOLDER } ]), [] ] ] if messages.empty?
+
       messages.map { |m| [ payload_for(m[:components]), m[:teams] ] }
     end
 

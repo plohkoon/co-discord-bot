@@ -123,9 +123,35 @@ class RosterRefreshJobTest < ActiveSupport::TestCase
     @api.edited.clear
     run_job
 
+    assert_equal({ CHANNEL => 2, OTHER_CHANNEL => 0 },
+                 @api.edited.to_h { |channel, _, payload| [ channel, team_count(payload) ] })
+    assert_empty @api.deleted # the emptied channel keeps its placeholder
+  end
+
+  test "the first team created edits the placeholder in place" do
+    post = create_post(message_ids: [ 500 ])
+    create_team("Alpha")
+
+    run_job
+
     assert_equal [ [ CHANNEL, 500 ] ], @api.edited.map { |channel, id, _| [ channel, id ] }
-    assert_equal 2, team_count(@api.edited.first.last)
-    assert_equal [ [ OTHER_CHANNEL, 600 ] ], @api.deleted
+    assert_equal 1, team_count(@api.edited.first.last)
+    assert_empty @api.created
+    assert_equal [ 500 ], post.reload.message_ids
+  end
+
+  test "a roster whose teams all go away keeps a placeholder instead of vanishing" do
+    alpha = create_team("Alpha")
+    post = create_post(message_ids: [ 500, 501 ])
+    ActsAsTenant.with_tenant(guild) { alpha.update!(active: false) }
+
+    run_job
+
+    _, message_id, payload = @api.edited.sole
+    assert_equal 500, message_id
+    assert_equal CoBot::RosterMessage::PLACEHOLDER, payload.dig("components", 0, "content")
+    assert_equal [ [ CHANNEL, 501 ] ], @api.deleted
+    assert_equal [ 500 ], post.reload.message_ids
   end
 
   test "no-op when the roster was never posted" do
