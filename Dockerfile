@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
-# This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
+# This Dockerfile is designed for production, not development. Fly builds it
+# (`flyctl deploy --remote-only`, see fly.toml), or build'n'run by hand:
 # docker build -t demo .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name demo demo
+# docker run -d -p 8080:8080 -e PORT=8080 -e RAILS_MASTER_KEY=<value from config/master.key> --name demo demo
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
@@ -81,7 +82,9 @@ ENV DATABASE_URL="sqlite3:///data/production.sqlite3"
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Start server via Thruster by default, this can be overwritten at runtime
-EXPOSE 80
+# Start Puma directly — Fly's proxy fronts it (fly.toml's [processes] runs the
+# same command). It must end in `./bin/rails server` for bin/docker-entrypoint
+# to run db:prepare. Puma listens on $PORT (8080 on Fly).
+EXPOSE 8080
 VOLUME /data
-CMD ["./bin/thrust", "./bin/rails", "server"]
+CMD ["./bin/rails", "server"]

@@ -30,8 +30,8 @@ test:
     database: storage/test_queue.sqlite3
     migrations_paths: db/queue_migrate
 
-# Store production database in the storage/ directory, which by default
-# is mounted as a persistent Docker volume in config/deploy.yml.
+# Store production database in the storage/ directory by default. On Fly,
+# DATABASE_URL (fly.toml) points these at the persistent /data volume.
 production:
   primary:
     <<: *default
