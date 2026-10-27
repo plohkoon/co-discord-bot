@@ -39,6 +39,10 @@ class Team < ApplicationRecord
   # the notification only — the 7-day auto-reject rides on the same sweep.
   REMINDER_FIELDS = %i[review_digest review_digest_after_days remind_ping].freeze
 
+  # Which WoW game the team plays — see WowGame for what that changes.
+  # Prefixed because a bare `Team.forever` scope reads like a duration.
+  enum :game, WowGame::ALL.keys.index_with(&:itself), default: :retail, prefix: true, validate: true
+
   validates :name, presence: true, length: { maximum: 100 }
   # The other roster lines are uncapped, but the bio invites prose — cap it so
   # one team's essay can't eat the roster message's 4000-char budget.
@@ -88,6 +92,8 @@ class Team < ApplicationRecord
   end
 
   def collect_character? = self[:collect_character] && application_questions.count < ApplicationQuestion::MAX_PER_TEAM
+
+  def wow_game = WowGame.fetch(game)
 
   def wowaudit_configured? = wowaudit_api_key.present?
 

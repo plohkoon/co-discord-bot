@@ -13,7 +13,7 @@ class TeamsController < ApplicationController
 
   def create
     attrs = params.require(:team).permit(:name, :team_role_id, :officer_role_id, :review_channel_id,
-                                         :position, :team_category_id, :team_type_id, *Team::ROSTER_FIELDS)
+                                         :position, :team_category_id, :team_type_id, :game, *Team::ROSTER_FIELDS)
     resolve_text_fields(attrs)
     @team = @guild.teams.new(attrs.except(:team_category_id, :team_type_id))
     assign_roster_choices(attrs)
@@ -73,7 +73,7 @@ class TeamsController < ApplicationController
     return if performed?
 
     attrs = params.require(:team).permit(:name, :slug, :position, :team_category_id, :team_type_id,
-                                         :recruiting, :closed_message, :collect_character, :wowaudit_api_key,
+                                         :recruiting, :closed_message, :collect_character, :game, :wowaudit_api_key,
                                          *Team::ROSTER_FIELDS, *Team::MESSAGE_FIELDS, *Team::REMINDER_FIELDS)
     attrs.delete(:position) unless can_manage?
     # The public apply URL slug (lead-editable, like the rest of the team's

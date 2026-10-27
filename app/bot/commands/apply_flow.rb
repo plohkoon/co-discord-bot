@@ -20,9 +20,10 @@ module Commands
         # just files. Costs one of Discord's five, which is why Team#question_limit
         # drops to four when this is on.
         if collect_character
-          modal.label(label: "Your character (Name-Realm)") do |label|
+          game = team.wow_game
+          modal.label(label: game.character_label) do |label|
             label.text_input(style: :short, custom_id: "character", required: false,
-                             max_length: 64, placeholder: "Thrall-Sargeras")
+                             max_length: 64, placeholder: game.character_placeholder)
           end
         end
 

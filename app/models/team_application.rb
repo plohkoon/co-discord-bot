@@ -28,6 +28,14 @@ class TeamApplication < ApplicationRecord
 
   def character_pending? = character_asked? && !character_resolution_attempted?
 
+  # They named a character in a game co-bot can't look up yet (WoW: Forever).
+  # Never resolved, so it would otherwise read as pending forever — what they
+  # typed is all there is, and it's shown as exactly that. A character already
+  # resolved (the team switched games later) keeps its data.
+  def character_lookup_unsupported?
+    character_asked? && wow_character_id.nil? && !team.wow_game.lookup?
+  end
+
   enum :status, { pending: 0, accepted: 1, rejected: 2 }, default: :pending
   enum :source, { applied: 0, manual: 1 }, default: :applied
 

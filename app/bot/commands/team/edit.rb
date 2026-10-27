@@ -19,6 +19,8 @@ module Commands
       boolean :recruiting, "Accepting applications? Turn off to hide the roster Apply button"
       string :closed_message, "Roster note shown when not recruiting (blank = default)"
       boolean :collect_character, "Ask applicants for their WoW character (uses one of the 5 question slots)"
+      string :game, "Which WoW game the team plays (decides how its applicants' characters are looked up)",
+             choices: WowGame.choices.to_h
       boolean :review_digest, "Post the daily digest of applications still waiting for review"
       integer :review_digest_after_days, "Days an application must wait before the digest lists it (0-7)"
       boolean :remind_ping, "Ping the officer role on the digest (off = visible but silent)"
@@ -48,6 +50,7 @@ module Commands
         team.name = resolve_text(option(:name).to_s.strip) if option(:name)
         team.recruiting = option(:recruiting) unless option(:recruiting).nil?
         team.collect_character = option(:collect_character) unless option(:collect_character).nil?
+        team.game = option(:game) if option(:game)
         ::Team::REMINDER_FIELDS.each do |field|
           team[field] = option(field) unless option(field).nil?
         end

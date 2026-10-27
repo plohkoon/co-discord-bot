@@ -63,6 +63,14 @@
               { include_blank: "No type" }, class: "field w-full mt-1" %>
       </label>
       <label class="block">
+        <span class="text-xs text-muted-foreground">Game</span>
+        <%= f.select :game, WowGame.choices, {}, class: "field w-full mt-1" %>
+        <span class="block text-xs text-muted-foreground mt-1">
+          <%= WowGame::FOREVER.name %> characters are recorded as typed — co-bot can't look up their
+          gear or progression until Blizzard's API supports Forever.
+        </span>
+      </label>
+      <label class="block">
         <span class="text-xs text-muted-foreground">Emote (shown before the team name)</span>
         <%= f.text_field :emote, placeholder: "e.g. ⚔️ or :emote_name:", class: "field w-full mt-1" %>
       </label>

@@ -28,7 +28,7 @@
   <div class="lg:col-span-2">
     <%= render "raider_report", character: @character, membership: @membership,
           guild: @guild, team: @team, candidates: @character_candidates,
-          unresolved_input: @unresolved_input %>
+          unresolved_input: @unresolved_input, unsupported_input: @unsupported_input %>
 
     <%= render Ui::SectionComponent.new(title: "Application history") do %>
       <% if @applications.empty? %>

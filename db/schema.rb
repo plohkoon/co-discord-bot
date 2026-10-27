@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_19_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -260,6 +260,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_100000) do
     t.text "date_and_time"
     t.text "description"
     t.string "emote"
+    t.string "game", default: "retail", null: false
     t.bigint "guild_id", null: false
     t.bigint "last_review_digest_message_id"
     t.date "last_review_digest_on"

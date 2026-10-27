@@ -342,6 +342,19 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_select "input[name=?]", "application[character]"
   end
 
+  test "a Forever team asks for the character the way Forever names them" do
+    ActsAsTenant.with_tenant(@guild) { @team.update!(game: "forever") }
+    sign_in_as users(:member), member: [ @guild ]
+
+    with_membership(true) do
+      get public_team_path(@guild.slug, @team.slug)
+    end
+
+    assert_response :success
+    assert_match WowGame::FOREVER.character_label, response.body
+    assert_no_match "Name-Realm", response.body
+  end
+
   test "a member can apply from the web — same Submit path as the modal" do
     sign_in_as users(:member), member: [ @guild ]
 

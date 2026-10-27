@@ -39,7 +39,7 @@ module Applications
       }.merge(overrides))
     end
 
-    # --- The four states ---
+    # --- The five states ---
 
     test "a team that doesn't ask for a character shows nothing" do
       summary = RaiderSummary.call(application(input: nil))
@@ -47,6 +47,27 @@ module Applications
       assert_equal :not_asked, summary.state
       assert_not summary.show?
       assert_nil RaiderSummary.body(application(input: nil))
+    end
+
+    # A Forever character is never looked up, so without its own state it
+    # would read as "loading" for good — and officers would lose the one thing
+    # there is to show, which is what the applicant typed.
+    test "a character in a game co-bot can't look up yet shows what was typed, not loading" do
+      ActsAsTenant.with_tenant(guild) { team.update!(game: "forever") }
+      app = application(input: "Tarren Mistwalker", resolved: false)
+
+      assert_equal :unsupported, RaiderSummary.call(app).state
+      body = RaiderSummary.body(app)
+      assert_match "Tarren Mistwalker", body
+      assert_match "WoW: Forever", body
+      assert_no_match(/loading|cannot load/i, body)
+    end
+
+    test "a character resolved before the team switched games keeps its data" do
+      app = application(character: character)
+      ActsAsTenant.with_tenant(guild) { team.update!(game: "forever") }
+
+      assert_equal :ready, RaiderSummary.call(app.reload).state
     end
 
     # The ambiguous window is every application's first seconds: resolution is

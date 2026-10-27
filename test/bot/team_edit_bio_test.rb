@@ -51,6 +51,13 @@ class TeamEditBioTest < ActiveSupport::TestCase
     event
   end
 
+  test "an officer switches the team's game" do
+    event = run_edit({ "game" => "forever" })
+
+    assert_match(/Updated/, event.responses.first)
+    assert team.reload.game_forever?
+  end
+
   test "an officer toggles the character field off" do
     event = run_edit({ "collect_character" => false })
 

@@ -71,6 +71,18 @@ module Applications
       assert_not application.character_unresolved?
     end
 
+    # A Retail lookup of a Forever name "fails" and DMs the applicant that a
+    # character they really have doesn't exist. Keep the input, skip the job.
+    test "a Forever team's character is kept as typed but never queued for resolution" do
+      ActsAsTenant.with_tenant(guild) { team.update!(game: "forever") }
+
+      application = submit(character: "Tarren Mistwalker")
+
+      assert_equal "Tarren Mistwalker", application.character_input
+      assert application.character_lookup_unsupported?
+      assert_enqueued_jobs 0, only: ApplicationCharacterJob
+    end
+
     test "no character named means no resolution work" do
       application = submit
 

@@ -133,7 +133,8 @@ module CoBot
       def apply_options(builder, options)
         options.each do |opt|
           case opt.type
-          when :string      then builder.string(opt.name, opt.description, required: opt.required, autocomplete: opt.autocomplete)
+          when :string      then builder.string(opt.name, opt.description, required: opt.required, autocomplete: opt.autocomplete,
+                                                    choices: opt.choices)
           when :integer     then builder.integer(opt.name, opt.description, required: opt.required)
           when :boolean     then builder.boolean(opt.name, opt.description, required: opt.required)
           when :user        then builder.user(opt.name, opt.description, required: opt.required)

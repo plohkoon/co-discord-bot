@@ -25,6 +25,23 @@ class TeamCollectCharacterTest < ActionDispatch::IntegrationTest
     assert @team.reload.collect_character?
   end
 
+  test "a team lead can switch the team's game" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    patch guild_team_path(@guild, @team), params: { team: { game: "forever" } }
+
+    assert_redirected_to guild_team_path(@guild, @team)
+    assert @team.reload.game_forever?
+  end
+
+  test "an unknown game is refused rather than saved" do
+    sign_in_as users(:member), member: [ @guild ]
+
+    patch guild_team_path(@guild, @team), params: { team: { game: "cataclysm" } }
+
+    assert @team.reload.game_retail?
+  end
+
   test "plain members can't change it" do
     ActsAsTenant.with_tenant(@guild) { TeamOfficer.delete_all }
     sign_in_as users(:member), member: [ @guild ]
