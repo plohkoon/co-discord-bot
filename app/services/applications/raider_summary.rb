@@ -2,17 +2,19 @@ module Applications
   # The one-line-per-fact digest of an applicant's character, for the officer
   # review message.
   #
-  # Its real job is being honest about **which of four states** an application
-  # is in, because three of them look like "no data" if you're careless:
+  # Its real job is being honest about **which of five states** an application
+  # is in, because four of them look like "no data" if you're careless:
   #
-  #   :not_asked  the team doesn't collect a character — show nothing at all
-  #   :loading    they named one and we haven't finished looking it up
-  #   :failed     they named one Blizzard doesn't recognise (a typo, usually)
-  #   :ready      we have it
+  #   :not_asked    the team doesn't collect a character — show nothing at all
+  #   :unsupported  they named one in a game co-bot can't look up yet (WoW:
+  #                 Forever) — show what they typed, and say why that's all
+  #   :loading      they named one and we haven't finished looking it up
+  #   :failed       they named one Blizzard doesn't recognise (a typo, usually)
+  #   :ready        we have it
   #
-  # `:loading` and `:failed` must never render as an empty summary. An officer
-  # reading "no parses" about someone who has a 99 would be worse than showing
-  # nothing, so each state says what it is.
+  # `:unsupported`, `:loading` and `:failed` must never render as an empty
+  # summary. An officer reading "no parses" about someone who has a 99 would be
+  # worse than showing nothing, so each state says what it is.
   class RaiderSummary
     Result = Struct.new(:state, :character, :lines, keyword_init: true) do
       def ready? = state == :ready
@@ -29,6 +31,9 @@ module Applications
 
     def call
       return result(:not_asked) unless @application.character_asked?
+      # Before :loading — an unsupported lookup is never attempted, so it would
+      # otherwise read as "still looking" for good.
+      return result(:unsupported) if @application.character_lookup_unsupported?
       # Order matters: "haven't looked yet" has to win over "found nothing",
       # or every application reads as a typo for its first few seconds.
       return result(:loading) if @application.character_pending?
@@ -45,6 +50,8 @@ module Applications
       summary = call(application)
       case summary.state
       when :not_asked then nil
+      when :unsupported then "🎮 **#{application.character_input}** — raider data isn't available " \
+                             "for #{application.team.wow_game.name} characters yet."
       when :loading   then "⏳ Loading raider data…"
       when :failed    then "⚠️ Cannot load raider data — no character called " \
                            "**#{application.character_input}**."

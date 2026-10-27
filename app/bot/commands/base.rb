@@ -3,18 +3,21 @@ module Commands
   # options + autocomplete + handler in one place (the class), and the namespace
   # is the Discord command path: Commands::Team::Member::Accept -> /team member accept.
   class Base
-    Option = Struct.new(:type, :name, :description, :required, :autocomplete, :channel_types, keyword_init: true)
+    Option = Struct.new(:type, :name, :description, :required, :autocomplete, :channel_types, :choices, keyword_init: true)
 
     class << self
       def description(text = nil)
         text ? @description = text : @description
       end
 
-      # option DSL: string :name, "desc", required:, autocomplete:, channel_types:
+      # option DSL: string :name, "desc", required:, autocomplete:, channel_types:,
+      # choices: (a fixed { "Label" => "value" } list — strings only, see
+      # CommandRegistry.apply_options)
       %i[string integer boolean user role channel mentionable].each do |type|
-        define_method(type) do |name, description, required: false, autocomplete: false, channel_types: nil|
+        define_method(type) do |name, description, required: false, autocomplete: false, channel_types: nil, choices: nil|
           command_options << Option.new(type: type, name: name.to_s, description: description,
-                                        required: required, autocomplete: autocomplete, channel_types: channel_types)
+                                        required: required, autocomplete: autocomplete, channel_types: channel_types,
+                                        choices: choices)
         end
       end
 

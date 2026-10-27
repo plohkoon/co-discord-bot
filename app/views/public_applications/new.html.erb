@@ -40,9 +40,9 @@
           class: "rounded-xl border border-border bg-card p-5 space-y-4" do %>
       <% if @team.collect_character? %>
         <label class="block">
-          <span class="text-xs text-muted-foreground">Your character (Name-Realm)</span>
+          <span class="text-xs text-muted-foreground"><%= @team.wow_game.character_label %></span>
           <%= text_field_tag "application[character]", @submitted&.dig("character"),
-                maxlength: 64, placeholder: "Thrall-Sargeras", id: nil, class: "field w-full mt-1" %>
+                maxlength: 64, placeholder: @team.wow_game.character_placeholder, id: nil, class: "field w-full mt-1" %>
         </label>
       <% end %>
       <% @questions.each do |question| %>

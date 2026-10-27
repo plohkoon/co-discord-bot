@@ -107,6 +107,22 @@ class ApplicationCharacterJobTest < ActiveJob::TestCase
     assert_match(/Nothing is lost/i, sent.first[:content])
   end
 
+  # Covers a job enqueued before the team switched to Forever: no lookup, and
+  # above all no "couldn't find your character" DM.
+  test "a team in a game co-bot can't look up is left alone" do
+    team(game: "forever")
+    app = application(input: "Tarren Mistwalker")
+    sent = []
+    stub_singleton_method(Notifications::DirectMessage, :call, ->(**args) { sent << args }) do
+      run_job(app, client: FakeClient.new(nil, error: BattleNet::Client::NotFound))
+    end
+
+    app.reload
+    assert_nil app.character_resolved_at
+    assert_nil app.wow_character_id
+    assert_empty sent
+  end
+
   test "input in the wrong shape is reported without a Blizzard round trip" do
     app = application(input: "justaname")
     sent = []

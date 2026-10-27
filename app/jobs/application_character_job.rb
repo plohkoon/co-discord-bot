@@ -19,7 +19,11 @@ class ApplicationCharacterJob < ApplicationJob
     ActsAsTenant.with_tenant(guild) do
       application = TeamApplication.find_by(id: application_id) or next
       next if application.character_input.blank? || application.wow_character_id.present?
-
+      # A game co-bot can't look characters up in (WoW: Forever, for now). A
+      # Retail lookup would "fail" and DM the applicant that their perfectly
+      # good character doesn't exist. Covers jobs enqueued before a team
+      # switched games, too.
+      next unless application.team.wow_game.lookup?
 
       # A shadow record if this is the first co-bot has heard of them — an
       # applicant almost certainly hasn't signed into the web app.

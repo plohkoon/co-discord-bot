@@ -68,7 +68,7 @@ module Applications
       # Resolving costs a Blizzard round trip, so it happens after the commit
       # and out of band: the officers are already notified and the applicant
       # already has their acknowledgement.
-      if application.character_input.present?
+      if application.character_input.present? && @team.wow_game.lookup?
         ApplicationCharacterJob.perform_later(application_id: application.id,
                                               guild_id: application.guild_id)
       end

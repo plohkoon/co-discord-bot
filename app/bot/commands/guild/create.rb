@@ -17,6 +17,7 @@ module Commands
       string  :date_and_time, "When the team plays (e.g. Tuesdays 7-10pm CT)"
       string  :current_needs, "What the team is looking for (e.g. DPS)"
       integer :position, "Sort order within the category (lower first)"
+      string  :game, "Which WoW game the team plays (default: Retail)", choices: WowGame.choices.to_h
       admin_only!
 
       def call
@@ -34,6 +35,7 @@ module Commands
           team_category: category,
           team_type: team_type,
           position: option(:position).to_i,
+          game: option(:game).presence || WowGame::RETAIL.key,
           **(::Team::ROSTER_FIELDS - [ :emote ]).index_with { |field| resolve_text(option(field).to_s.strip.presence) }
         )
         return unless resolve_emote_onto(team)

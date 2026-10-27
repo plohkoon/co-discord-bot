@@ -5,7 +5,11 @@
   <% if character.nil? %>
     <%= render Ui::CardComponent.new do %>
       <p class="text-sm text-muted-foreground">
-        <% if unresolved_input.present? %>
+        <% if unsupported_input.present? %>
+          🎮 Applied as <span class="text-foreground"><%= unsupported_input %></span>.
+          co-bot can't look up <%= team.wow_game.name %> characters yet, so there's no gear,
+          progression or parse data to show.
+        <% elsif unresolved_input.present? %>
           ⚠️ Couldn't find a character called
           <span class="text-foreground"><%= unresolved_input %></span> — probably a typo.
           They've been told; set the right one below once they reply.

@@ -12,6 +12,8 @@ class MembershipsController < ApplicationController
     @character = @membership.wow_character || @applications.detect(&:wow_character)&.wow_character
     # Shown when nothing resolved, so "typo" reads differently from "no data".
     @unresolved_input = @applications.detect(&:character_unresolved?)&.character_input
+    # And "can't look this game up yet" differently from both.
+    @unsupported_input = @applications.detect(&:character_lookup_unsupported?)&.character_input
     @character_candidates = @membership.user&.wow_characters&.by_prominence || WowCharacter.none
   end
 
