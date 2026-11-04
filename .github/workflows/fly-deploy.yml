@@ -36,7 +36,27 @@ jobs:
           # the tip of the default branch, which may already have moved on to a
           # commit nothing has tested.
           ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      # Deploys queue in deploy-group, so when two merges land close together
+      # the older commit's deploy can run *second* and roll back the newer one
+      # (happened with #54/#56: v63 shipped the commit without #54). Only the
+      # commit still at main's tip deploys; a superseded one skips, because the
+      # newer commit's own CI run will deploy it — and if that CI fails, the
+      # newer commit is what's broken, so shipping the older one is no fix.
+      - name: Skip if main has moved on
+        id: freshness
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$tip" = "$HEAD_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deploy of $HEAD_SHA — main is now at $tip, whose CI run deploys it."
+          fi
+      - if: steps.freshness.outputs.current == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - if: steps.freshness.outputs.current == 'true'
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
