@@ -8,6 +8,16 @@ version: 2
 #
 # Minor + patch updates land as one grouped weekly PR; majors get individual PRs
 # (anything not captured by a group falls out separately by default).
+#
+# Bundler covers every gem in the lockfile, not just the Gemfile's direct ones
+# (`dependency-type: all`): most of what the CI gem scan flags — rack,
+# nokogiri, loofah, rails-html-sanitizer — arrives transitively, and
+# Dependabot's default would never bump it. Security updates (separate repo
+# setting) already cover transitives but only once an advisory reaches
+# GitHub's database, which lags the ruby-advisory-db that bundler-audit reads.
+#
+# There is no npm entry: JS goes through importmap (no package.json), which
+# Dependabot doesn't support — `bin/importmap audit` in CI covers those pins.
 updates:
   - package-ecosystem: bundler
     directory: "/"
@@ -15,6 +25,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    allow:
+      - dependency-type: all
     cooldown:
       default-days: 7
     groups:
