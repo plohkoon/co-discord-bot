@@ -154,4 +154,86 @@ class RosterSettingsTest < ActionDispatch::IntegrationTest
     assert_nil @team.team_category_id
     assert_nil @team.team_type_id
   end
+
+  # --- Category about text + "Apply to make a team" ---
+
+  # Stands in for Discord::BotApi; configured? false short-circuits the show
+  # page's GuildHealth check.
+  class FakeChannelApi
+    def configured? = false
+    def guild_roles(_id) = []
+    def guild_channels(_id)
+      [ { "type" => 0, "name" => "admin-proposals", "id" => "901", "position" => 1 },
+        { "type" => 2, "name" => "voice", "id" => "902", "position" => 2 } ]
+    end
+  end
+
+  def with_fake_channels(&block) = stub_singleton_method(Discord::BotApi, :new, FakeChannelApi.new, &block)
+
+  test "managers set a category's about and toggle it accepting proposals" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    assert_difference -> { refresh_jobs } do
+      patch guild_team_category_path(@guild, @category),
+            params: { team_category: { name: "PvE Teams", about: "Our **PvE** teams.\r\n\r\nLorem ipsum.",
+                                       proposals_enabled: "1" } }
+    end
+    assert_redirected_to guild_path(@guild)
+    @category.reload
+    assert_equal "Our **PvE** teams.\n\nLorem ipsum.", @category.about
+    assert @category.proposals_enabled?
+
+    patch guild_team_category_path(@guild, @category), params: { team_category: { about: "", proposals_enabled: "0" } }
+    @category.reload
+    assert_nil @category.about
+    assert_not @category.proposals_enabled?
+  end
+
+  test "managers set the one team-proposals channel; turning it on or off refreshes the roster" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    with_fake_channels do
+      assert_difference -> { refresh_jobs } do
+        patch guild_path(@guild), params: { guild: { team_proposals_channel_id: "901" } }
+      end
+      assert_equal 901, @guild.reload.team_proposals_channel_id
+
+      assert_difference -> { refresh_jobs } do
+        patch guild_path(@guild), params: { guild: { team_proposals_channel_id: "" } }
+      end
+      assert_nil @guild.reload.team_proposals_channel_id
+    end
+  end
+
+  test "a team-proposals channel that isn't one of the server's text channels is rejected" do
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    with_fake_channels { patch guild_path(@guild), params: { guild: { team_proposals_channel_id: "902" } } }
+
+    assert_equal "Pick channels from the list.", flash[:alert]
+    assert_nil @guild.reload.team_proposals_channel_id
+  end
+
+  test "a new category refreshes posted rosters, which show every category" do
+    ActsAsTenant.with_tenant(@guild) { RosterPost.create!(channel_id: 700, message_ids: [ 1 ]) }
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    assert_difference -> { refresh_jobs } do
+      post guild_team_categories_path(@guild), params: { team_category: { name: "PvP Teams", about: "Arena and RBG." } }
+    end
+    ActsAsTenant.with_tenant(@guild) { assert_equal "Arena and RBG.", TeamCategory.named("PvP Teams").about }
+  end
+
+  test "the settings section offers the proposals channel and each category's about and toggle" do
+    @guild.update!(team_proposals_channel_id: 901)
+    @category.update!(about: "Our PvE teams.", proposals_enabled: true)
+    sign_in_as users(:member), manageable: [ @guild ]
+
+    with_fake_channels { get guild_path(@guild) }
+
+    assert_response :success
+    assert_select "select[name='guild[team_proposals_channel_id]'] option[selected][value=?]", "901"
+    assert_select "textarea[name='team_category[about]']", text: "Our PvE teams."
+    assert_select "input[type=checkbox][name='team_category[proposals_enabled]'][checked]"
+  end
 end

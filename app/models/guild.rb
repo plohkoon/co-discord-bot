@@ -17,6 +17,10 @@ class Guild < ApplicationRecord
   # clearing it takes them down). On commit, because the job re-reads the guild
   # from a separate process.
   after_update_commit :resync_event_posts, if: :saved_change_to_events_channel_id?
+  # Setting or clearing the team-proposals channel shows or hides every opted-in
+  # category's "Apply to make a team" button. (Moving it between channels
+  # changes nothing on the roster — the job reads the channel when posting.)
+  after_update_commit :refresh_rosters, if: :team_proposals_toggled?
 
   # The "Join this server" button on the public apply page. Only real Discord
   # invite links (or blank — the page then shows an "ask an admin" line instead
@@ -90,6 +94,10 @@ class Guild < ApplicationRecord
   # Scheduled-event mirroring is off until a channel is picked: with nowhere to
   # post, there's nothing to announce, start or clean up.
   def events_enabled? = events_channel_id.present?
+
+  # Where every category's "Apply to make a team" proposals post. Unset hides
+  # the button everywhere, whatever each category's own toggle says.
+  def team_proposals_enabled? = team_proposals_channel_id.present?
   # The guild's local time zone (falls back to UTC for a blank/unknown value).
   # Used to interpret call-out days and to fire the morning absence digest.
   def tz = ActiveSupport::TimeZone[time_zone] || ActiveSupport::TimeZone["UTC"]
@@ -116,6 +124,15 @@ class Guild < ApplicationRecord
     previous_channel_id, _current = saved_change_to_events_channel_id
     GuildEventsResyncJob.perform_later(guild_id: id, previous_channel_id: previous_channel_id)
   end
+
+  def team_proposals_toggled?
+    return false unless saved_change_to_team_proposals_channel_id?
+
+    before, after = saved_change_to_team_proposals_channel_id
+    before.present? != after.present?
+  end
+
+  def refresh_rosters = RosterRefreshJob.perform_later(guild_id: id)
 
   # Accepts both IANA ids ("America/Chicago") and Rails' friendly names
   # ("Central Time (US & Canada)") — anything ActiveSupport::TimeZone can

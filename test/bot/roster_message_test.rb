@@ -185,6 +185,63 @@ class RosterMessageTest < ActiveSupport::TestCase
     end
   end
 
+  test "a category's about renders under its header, in the same text display" do
+    pve = ActsAsTenant.with_tenant(guild) do
+      TeamCategory.create!(name: "Retail PvE Teams", position: 1, about: "Our retail PvE teams.\n\nLorem ipsum.")
+    end
+    team = create_team("Raiders", category: pve)
+
+    header = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }.first.first["components"].first
+
+    assert_equal TEXT_DISPLAY, header["type"]
+    assert_equal "## Retail PvE Teams\nOur retail PvE teams.\n\nLorem ipsum.", header["content"]
+  end
+
+  test "a category taking proposals gets an Apply to make a team button beside its header" do
+    guild.update!(team_proposals_channel_id: 900)
+    pve = ActsAsTenant.with_tenant(guild) do
+      TeamCategory.create!(name: "PvE Teams", position: 1, about: "Blurb", proposals_enabled: true)
+    end
+
+    header = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([], categories: [ pve ]) }
+               .first.first["components"].first
+
+    assert_equal SECTION, header["type"]
+    assert_equal "## PvE Teams\nBlurb", header.dig("components", 0, "content")
+    assert_equal "proposeteam:#{pve.id}", header.dig("accessory", "custom_id")
+    assert_equal "Apply to make a team", header.dig("accessory", "label")
+  end
+
+  test "an opted-in category shows no button while the guild has no proposals channel" do
+    pve = ActsAsTenant.with_tenant(guild) do
+      TeamCategory.create!(name: "PvE Teams", position: 1, proposals_enabled: true)
+    end
+
+    header = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([], categories: [ pve ]) }
+               .first.first["components"].first
+
+    assert_equal({ "type" => TEXT_DISPLAY, "content" => "## PvE Teams" }, header)
+  end
+
+  test "an overflowing category re-states only its name, never its about or button" do
+    guild.update!(team_proposals_channel_id: 900)
+    pve = ActsAsTenant.with_tenant(guild) do
+      TeamCategory.create!(name: "PvE Teams", position: 1, about: "Blurb", proposals_enabled: true)
+    end
+    teams = 12.times.map { |i| create_team("Team #{format('%02d', i)}", category: pve) }
+
+    payloads = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads(teams) }
+
+    assert_operator payloads.size, :>, 1
+    assert_equal SECTION, payloads.first.first["components"].first["type"]
+    payloads.drop(1).each do |payload, _|
+      assert_equal({ "type" => TEXT_DISPLAY, "content" => "## PvE Teams" }, payload["components"].first)
+    end
+    payloads.each do |payload, _|
+      assert_operator CoBot::RosterMessage.component_cost(payload["components"]), :<=, CoBot::RosterMessage::MAX_COMPONENTS
+    end
+  end
+
   test "a recruiting team renders a section with the inline Apply button" do
     team = create_team("Open")
     body = ActsAsTenant.with_tenant(guild) { CoBot::RosterMessage.payloads([ team ]) }

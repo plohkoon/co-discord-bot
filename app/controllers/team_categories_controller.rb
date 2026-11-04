@@ -1,7 +1,8 @@
 # Manage Server CRUD for the guild's roster categories (directory section
 # headers). Teams pick from this list — categories are never created on the
-# fly from a team form or command. Renames, reorders, and removals show up in
-# any posted roster via RosterRefreshJob.
+# fly from a team form or command. Renames, reorders, about text, and the
+# "Apply to make a team" toggle show up in any posted roster via
+# RosterRefreshJob.
 class TeamCategoriesController < ApplicationController
   include GuildScoping
   before_action :require_guild_manager
@@ -9,6 +10,9 @@ class TeamCategoriesController < ApplicationController
   def create
     category = TeamCategory.new(category_params)
     if category.save
+      # Unfiltered rosters show every category, so a new one appears there
+      # straight away. Skipped (rather than left to no-op) when nothing's posted.
+      RosterRefreshJob.perform_later(guild_id: @guild.id) if RosterPost.exists?
       redirect_to guild_path(@guild), notice: "Category added."
     else
       redirect_to guild_path(@guild), alert: category.errors.full_messages.to_sentence
@@ -34,10 +38,12 @@ class TeamCategoriesController < ApplicationController
   private
 
   def category_params
-    attrs = params.require(:team_category).permit(:name, :position)
+    attrs = params.require(:team_category).permit(:name, :position, :about, :proposals_enabled)
     # Inline emote resolution: known :name: shortcodes render in the roster's
-    # "## Category" header; unknown ones stay as typed.
-    attrs[:name] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[:name]) if attrs[:name]
+    # "## Category" header and about text; unknown ones stay as typed.
+    %i[name about].each do |key|
+      attrs[key] = Discord::EmoteResolver.resolve_text(guild_id: @guild.id, input: attrs[key]) if attrs[key].present?
+    end
     attrs
   end
 end

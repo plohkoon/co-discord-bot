@@ -40,7 +40,7 @@ class GuildsController < ApplicationController
   # channel; a non-blank id must come from the guild's real text-channel list.
   def update
     attrs = params.require(:guild).permit(:log_channel_id, :important_log_channel_id, :events_channel_id,
-                                          :time_zone, :invite_url, :slug, :description)
+                                          :team_proposals_channel_id, :time_zone, :invite_url, :slug, :description)
     CHANNEL_SETTINGS.each { |key| attrs[key] = attrs[key].presence if attrs.key?(key) }
     # Blank clears the invite; the model rejects anything that isn't a real
     # Discord invite URL.
@@ -71,7 +71,7 @@ class GuildsController < ApplicationController
 
   # Every guild setting that holds a channel id — permitted, blank-cleared and
   # validated against the guild's real channel list as one set.
-  CHANNEL_SETTINGS = %i[log_channel_id important_log_channel_id events_channel_id].freeze
+  CHANNEL_SETTINGS = %i[log_channel_id important_log_channel_id events_channel_id team_proposals_channel_id].freeze
 
   # Text-channel pickers over REST (bot token), cached briefly. Mirrors
   # TeamsController#load_discord_options (same cache key + shape). An empty

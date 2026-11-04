@@ -2,7 +2,8 @@ module CoBot
   # Builds the /team roster directory as Components-V2 messages: one seamless
   # message (or as few as Discord's budgets allow) with "## Category" headers,
   # a section per team, and each team's Apply button inline beside its block —
-  # instead of a pile of separate messages.
+  # instead of a pile of separate messages. A category's header carries its
+  # about blurb and, when it takes proposals, an "Apply to make a team" button.
   #
   # discordrb 3.8 predates Components V2, so payloads are raw hashes sent over
   # REST via Discord::BotApi — which also lets RosterRefreshJob rebuild the
@@ -79,7 +80,11 @@ module CoBot
           if current[:components].any? && overflows?(current, addition)
             messages << current
             current = { components: [], chars: 0, teams: [] }
-            addition = (category ? [ header(category) ] : []) + [ block ]
+            # A section that starts in this message keeps its full header
+            # (about + button); one carried over from the last message just
+            # re-states its name so readers know where they are.
+            restated = header_pending ? header(category) : (category && header(category, continued: true))
+            addition = [ restated, block ].compact
           end
 
           current[:components].concat(addition)
@@ -161,7 +166,26 @@ module CoBot
       button
     end
 
-    def header(category)  = text("## #{category.name}")
+    # The "## Category" heading, its about blurb underneath, and — when the
+    # category takes proposals — the "Apply to make a team" button inline
+    # beside them. `continued` is the bare name re-stated at the top of an
+    # overflow message, so the about and button never appear twice.
+    def header(category, continued: false)
+      return text("## #{category.name}") if continued
+
+      heading = text([ "## #{category.name}", category.about.presence ].compact.join("\n"))
+      return heading unless category.accepting_proposals?
+
+      { "type" => SECTION, "components" => [ heading ], "accessory" => proposal_button(category) }
+    end
+
+    def proposal_button(category)
+      {
+        "type" => BUTTON, "style" => 2, "label" => "Apply to make a team",
+        "custom_id" => CoBot::CommandRegistry.custom_id("proposeteam", category.id)
+      }
+    end
+
     def text(content)     = { "type" => TEXT_DISPLAY, "content" => content }
     def separator         = { "type" => SEPARATOR, "divider" => true, "spacing" => 2 }
 

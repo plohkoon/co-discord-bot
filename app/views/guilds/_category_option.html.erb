@@ -1,0 +1,32 @@
+<%# One roster category: rename + reposition, its about text (Discord
+    markdown), and whether it shows an "Apply to make a team" button — or
+    delete. `record` may be a new record (the add row). %>
+<div class="rounded-lg border border-border bg-card p-3">
+  <%= form_with model: [ guild, record ], class: "space-y-2" do |f| %>
+    <div class="flex items-center gap-2">
+      <%= f.text_field :name, placeholder: "Name", maxlength: 100, required: true, class: "field flex-1 min-w-0" %>
+      <%= f.number_field :position, placeholder: "Pos", title: "Sort order (lower first; blank = last)",
+            class: "field w-20 shrink-0" %>
+    </div>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">About — shown under the header in the roster; Discord markdown works (optional)</span>
+      <%= f.text_area :about, rows: 3, maxlength: TeamCategory::ABOUT_MAX,
+            placeholder: "Our retail PvE teams…", class: "field w-full mt-1" %>
+    </label>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <label class="flex items-center gap-2 text-sm text-foreground">
+        <%= f.check_box :proposals_enabled, class: "field-checkbox" %>
+        Accepting team proposals
+      </label>
+      <%= f.submit (record.persisted? ? "Save" : "Add"),
+            class: "#{Ui::ButtonComponent.classes(variant: record.persisted? ? :outline : :gold, size: :sm)} shrink-0" %>
+    </div>
+  <% end %>
+  <% if record.persisted? %>
+    <div class="mt-1.5 text-right">
+      <%= button_to "Delete", [ guild, record ], method: :delete,
+            class: Ui::ButtonComponent.classes(variant: :danger, size: :sm),
+            form: { data: { turbo_confirm: "Delete this category? Its teams become uncategorized." } } %>
+    </div>
+  <% end %>
+</div>

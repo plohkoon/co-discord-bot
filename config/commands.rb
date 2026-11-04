@@ -56,6 +56,9 @@ CoBot::CommandRegistry.draw do
   component Commands::Components::AddNote
   component Commands::Components::NoteModal
   component Commands::Components::ViewNotes
+  # "Apply to make a team" beside a roster category header.
+  component Commands::Components::ProposeTeamButton
+  component Commands::Components::ProposeTeamModal
   # Correcting a character from the DM an applicant gets when it can't be found.
   # These run in a DM, so they resolve their own guild (in_dm: true).
   component Commands::Components::FixCharacter
