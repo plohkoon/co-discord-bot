@@ -1,5 +1,6 @@
-<%# One row of a curated roster list (a TeamCategory or TeamType): rename +
-    reposition inline, or delete. `record` may be a new record (the add row). %>
+<%# One team type: rename + reposition inline, or delete. `record` may be a
+    new record (the add row). Categories have their own, richer row
+    (_category_option). %>
 <div class="rounded-lg border border-border bg-card p-3">
   <%= form_with model: [ guild, record ], class: "flex items-center gap-2" do |f| %>
     <%= f.text_field :name, placeholder: "Name", maxlength: 100, required: true, class: "field flex-1 min-w-0" %>
@@ -12,9 +13,7 @@
     <div class="mt-1.5 text-right">
       <%= button_to "Delete", [ guild, record ], method: :delete,
             class: Ui::ButtonComponent.classes(variant: :danger, size: :sm),
-            form: { data: { turbo_confirm: record.is_a?(TeamCategory) ?
-              "Delete this category? Its teams become uncategorized." :
-              "Delete this team type? Teams using it lose their type line." } } %>
+            form: { data: { turbo_confirm: "Delete this team type? Teams using it lose their type line." } } %>
     </div>
   <% end %>
 </div>

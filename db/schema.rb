@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_100000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -121,6 +121,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
     t.string "name", default: "", null: false
     t.datetime "removed_at"
     t.string "slug"
+    t.bigint "team_proposals_channel_id"
     t.string "time_zone", default: "UTC", null: false
     t.datetime "updated_at", null: false
     t.index ["id"], name: "index_guilds_on_id", unique: true
@@ -201,10 +202,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
   end
 
   create_table "team_categories", force: :cascade do |t|
+    t.text "about"
     t.datetime "created_at", null: false
     t.bigint "guild_id", null: false
     t.string "name", null: false
     t.integer "position", default: 0, null: false
+    t.boolean "proposals_enabled", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["guild_id", "name"], name: "index_team_categories_on_guild_id_and_name", unique: true
     t.index ["guild_id"], name: "index_team_categories_on_guild_id"
@@ -237,6 +240,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
     t.datetime "updated_at", null: false
     t.index ["guild_id"], name: "index_team_officers_on_guild_id"
     t.index ["team_id", "discord_user_id"], name: "index_team_officers_on_team_id_and_discord_user_id", unique: true
+  end
+
+  create_table "team_proposals", force: :cascade do |t|
+    t.text "answers", null: false
+    t.bigint "channel_id"
+    t.datetime "created_at", null: false
+    t.bigint "discord_user_id", null: false
+    t.string "discord_username", default: "", null: false
+    t.bigint "guild_id", null: false
+    t.bigint "message_id"
+    t.integer "team_category_id"
+    t.datetime "updated_at", null: false
+    t.index ["guild_id"], name: "index_team_proposals_on_guild_id"
+    t.index ["team_category_id"], name: "index_team_proposals_on_team_category_id"
   end
 
   create_table "team_types", force: :cascade do |t|
@@ -648,6 +665,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_100000) do
   add_foreign_key "team_memberships", "wow_characters", on_delete: :nullify
   add_foreign_key "team_officers", "guilds"
   add_foreign_key "team_officers", "teams"
+  add_foreign_key "team_proposals", "guilds"
+  add_foreign_key "team_proposals", "team_categories", on_delete: :nullify
   add_foreign_key "team_types", "guilds"
   add_foreign_key "teams", "guilds"
   add_foreign_key "teams", "team_categories"
