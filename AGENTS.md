@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **co-bot** is a modular Discord server-management bot **plus a first-class Rails web app**, sharing one database. It is multi-guild by design — never hardcode guild IDs; every guild-owned table is scoped by `guild_id`. The first (and currently only) module is **team management**: admins create teams, applicants `/apply` via a Discord modal, officers accept/reject with persistent buttons, and the bot auto-assigns team roles. The web app lets members log in with Discord to manage the same teams, questions, applications, and notes.
 
-Rails 8, Ruby 3.4.1, discordrb 3.8, SQLite (WAL), Solid Queue, ViewComponent + Tailwind v4, `acts_as_tenant`.
+Rails 8, Ruby 3.4.12, discordrb 3.8, SQLite (WAL), Solid Queue, ViewComponent + Tailwind v4, `acts_as_tenant`.
 
 ## Commands
 

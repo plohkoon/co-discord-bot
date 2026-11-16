@@ -4,7 +4,7 @@ A modular Discord server-management bot with a first-class Rails web app, sharin
 
 ## Stack
 
-- **Ruby** 3.4.1, **Rails** 8
+- **Ruby** 3.4.12, **Rails** 8
 - **discordrb** 3.8 for the Discord gateway
 - **SQLite** (WAL) with Litestream for off-host backups
 - **Solid Queue** for background jobs
