@@ -101,7 +101,7 @@ class TeamProposalTest < ActiveSupport::TestCase
     assert_equal 42, proposal.discord_user_id
     assert_equal "thrall", proposal.discord_username
     assert_equal TeamProposal::QUESTIONS.map { |q| q[:label] }, proposal.answers.map { |a| a["label"] }
-    assert_equal "team answer", proposal.answers.first["answer"] # stripped
+    assert_equal "name answer", proposal.answers.first["answer"] # stripped
     assert_match(/sent to the server admins/, event.responses.sole)
   end
 

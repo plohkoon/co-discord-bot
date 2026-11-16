@@ -9,17 +9,21 @@ class TeamProposal < ApplicationRecord
   # The fixed questionnaire. Discord modals take at most five inputs, labels
   # are capped at 45 chars and descriptions at 100, hence the split: a short
   # `label`, with the full prompt as the description underneath it.
+  #
+  # Keys are the modal's input custom_ids. Past proposals stored their labels
+  # alongside the answers, so rewording or regrouping these never rewrites
+  # history.
   QUESTIONS = [
-    { key: "team", label: "Your team & the content it will pursue",
-      description: "What would the team look like? Day/time, content level, etc." },
-    { key: "style", label: "Play style, environment & who you want",
-      description: "Preferred play style and team environment; the players you hope to attract (casual, hardcore…)" },
-    { key: "commitment", label: "Participation & commitment",
-      description: "Your expectations for participation and commitment." },
-    { key: "on_board", label: "Who's already on board?",
+    { key: "name", label: "Team name & color",
+      description: "What you'd like the team called, and the color for its role." },
+    { key: "leadership", label: "Leadership",
+      description: "Who's on your leadership team?" },
+    { key: "content", label: "Game type, play style & content",
+      description: "Content & level, days/times, your play style and the team environment you want." },
+    { key: "on_board", label: "Who's on board?",
       description: "Anyone you've already gotten on board to join and build this team." },
-    { key: "recruitment", label: "Recruitment plans & leadership team",
-      description: "How you plan to recruit, and who's on your leadership team." }
+    { key: "expectations", label: "Team expectations & recruitment plans",
+      description: "Participation & commitment expected, who you hope to attract (casual, hardcore…), how you'll recruit" }
   ].freeze
 
   ANSWER_MAX = 1000
