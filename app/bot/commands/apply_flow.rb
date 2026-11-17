@@ -28,7 +28,7 @@ module Commands
         end
 
         questions.each do |question|
-          modal.label(label: question.label) do |label|
+          modal.label(label: question.label, description: question.description.presence) do |label|
             label.text_input(
               style: question.paragraph? ? :paragraph : :short,
               custom_id: "q:#{question.id}",

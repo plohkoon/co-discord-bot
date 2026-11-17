@@ -5,14 +5,21 @@
         method: (question.persisted? ? :patch : :post),
         scope: :application_question, class: "space-y-2" do |f| %>
     <div class="flex items-center gap-2">
-      <%= f.text_field :label, placeholder: "Question (max 45 chars)", maxlength: 45, class: "field flex-1 min-w-0" %>
+      <%= f.text_field :label, placeholder: "Question (max #{ApplicationQuestion::LABEL_MAX} chars)",
+            maxlength: ApplicationQuestion::LABEL_MAX, class: "field flex-1 min-w-0" %>
       <%= f.select :style, [ [ "Short", "short" ], [ "Paragraph", "paragraph" ] ], {}, class: "field w-auto shrink-0" %>
       <label class="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 px-1">
         <%= f.check_box :required, class: "field-checkbox" %> Required
       </label>
     </div>
+    <%# Discord caps the question itself at 45 chars; the description sits
+        beneath it in the modal, so a longer prompt goes here. %>
+    <%= f.text_field :description,
+          placeholder: "Description shown under the question — for longer prompts (optional, max #{ApplicationQuestion::DESCRIPTION_MAX} chars)",
+          maxlength: ApplicationQuestion::DESCRIPTION_MAX, class: "field w-full" %>
     <div class="flex items-center gap-2">
-      <%= f.text_field :placeholder, placeholder: "Placeholder hint (optional)", maxlength: 100, class: "field flex-1 min-w-0" %>
+      <%= f.text_field :placeholder, placeholder: "Placeholder hint (optional)",
+            maxlength: ApplicationQuestion::PLACEHOLDER_MAX, class: "field flex-1 min-w-0" %>
       <%= f.submit (question.persisted? ? "Save" : "Add"), class: "#{Ui::ButtonComponent.classes(variant: :gold)} shrink-0" %>
     </div>
   <% end %>

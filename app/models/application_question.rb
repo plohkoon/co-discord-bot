@@ -1,10 +1,13 @@
 class ApplicationQuestion < ApplicationRecord
   include GuildScoped
 
-  # Discord modal limits: at most 5 inputs, label <= 45 chars, placeholder
-  # <= 100 chars, and text value length 0..4000.
+  # Discord modal limits: at most 5 inputs, label <= 45 chars, description
+  # (shown beneath the label) <= 100 chars, placeholder <= 100 chars, and text
+  # value length 0..4000. The description is where a question too long for the
+  # label goes: a short label, with the full prompt underneath.
   MAX_PER_TEAM    = 5
   LABEL_MAX       = 45
+  DESCRIPTION_MAX = 100
   PLACEHOLDER_MAX = 100
   VALUE_MAX       = 4000
 
@@ -14,6 +17,7 @@ class ApplicationQuestion < ApplicationRecord
 
   validates :key, presence: true, uniqueness: { scope: :team_id }
   validates :label, presence: true, length: { maximum: LABEL_MAX }
+  validates :description, length: { maximum: DESCRIPTION_MAX }, allow_blank: true
   validates :placeholder, length: { maximum: PLACEHOLDER_MAX }, allow_blank: true
   validates :min_length, numericality: { only_integer: true, in: 0..VALUE_MAX }, allow_nil: true
   validates :max_length, numericality: { only_integer: true, in: 1..VALUE_MAX }, allow_nil: true
