@@ -10,6 +10,16 @@ class TeamDeleteSystemTest < ApplicationSystemTestCase
     end
   end
 
+  # Stands in for Discord::BotApi so the server page a delete redirects to
+  # never makes real calls — dotenv loads a developer's .env, bot token and
+  # all, into the test env. Unconfigured, and every call fails like an outage,
+  # which those pages already handle.
+  class OfflineApi
+    def configured? = false
+    def method_missing(*) = raise(Discord::BotApi::Error, "offline in tests")
+    def respond_to_missing?(*) = true
+  end
+
   # Signs in through the mocked OAuth callback with the remote lookups stubbed,
   # then runs the test body inside the session.
   def signed_in_as_manager
@@ -23,8 +33,10 @@ class TeamDeleteSystemTest < ApplicationSystemTestCase
     result = Discord::ManageableGuilds::Result.new([ { "id" => @guild.id.to_s } ], [], [ @guild.id.to_s ])
     stub_singleton_method(Discord::ManageableGuilds, :call, result) do
       stub_singleton_method(Discord::Connections, :call, []) do
-        visit "/auth/discord/callback"
-        yield
+        stub_singleton_method(Discord::BotApi, :new, OfflineApi.new) do
+          visit "/auth/discord/callback"
+          yield
+        end
       end
     end
   ensure
@@ -51,6 +63,9 @@ class TeamDeleteSystemTest < ApplicationSystemTestCase
   test "cancelling the confirmation deletes nothing" do
     signed_in_as_manager do
       visit guild_team_path(@guild, @team)
+      # Disabled means the page's JS is running — clicking before it is would
+      # submit with no dialog at all.
+      assert_button "Delete team", disabled: true
 
       fill_in "confirm_name", with: "Alpha Team"
       dismiss_confirm { click_on "Delete team" }
