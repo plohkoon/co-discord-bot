@@ -13,6 +13,17 @@ module Discord
     # handling still catches it, while callers that need to can tell a
     # permission refusal apart from a genuinely missing resource.
     Forbidden = Class.new(NotFound)
+    # 429. A subclass of Error, so callers that don't care still see a plain
+    # failure; a bulk caller (one request per member) reads retry_after —
+    # Discord's own figure, in seconds — and waits that long instead of failing.
+    class RateLimited < Error
+      attr_reader :retry_after
+
+      def initialize(message = nil, retry_after: 1.0)
+        super(message)
+        @retry_after = retry_after
+      end
+    end
 
     BASE = "https://discord.com/api/v10"
 
@@ -140,8 +151,21 @@ module Discord
       when Net::HTTPSuccess   then response.body.presence && JSON.parse(response.body)
       when Net::HTTPForbidden then raise Forbidden, "#{path} -> HTTP #{response.code}"
       when Net::HTTPNotFound  then raise NotFound, "#{path} -> HTTP #{response.code}"
+      when Net::HTTPTooManyRequests
+        raise RateLimited.new("#{path} -> HTTP 429", retry_after: retry_after(response))
       else raise Error, "#{path} -> HTTP #{response.code}"
       end
+    end
+
+    # The body's retry_after is a float (sub-second precision); the header is
+    # whole seconds. Either way, never less than a beat.
+    def retry_after(response)
+      seconds = begin
+        JSON.parse(response.body.to_s)["retry_after"]
+      rescue JSON::ParserError, TypeError
+        nil
+      end
+      [ (seconds || response["Retry-After"]).to_f, 0.5 ].max
     end
   end
 end

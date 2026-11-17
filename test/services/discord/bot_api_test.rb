@@ -84,5 +84,17 @@ module Discord
         with_http(FakeHttp.new(forbidden)) { api.create_dm_channel(42) }
       end
     end
+
+    test "a 429 maps to RateLimited carrying Discord's retry_after" do
+      limited = Net::HTTPTooManyRequests.new("1.1", "429", "Too Many Requests")
+      limited.instance_variable_set(:@read, true)
+      limited.instance_variable_set(:@body, JSON.generate("retry_after" => 2.5, "global" => false))
+
+      error = assert_raises(Discord::BotApi::RateLimited) do
+        with_http(FakeHttp.new(limited)) { api.remove_member_role(1, 2, 3) }
+      end
+      assert_in_delta 2.5, error.retry_after
+      assert_kind_of Discord::BotApi::Error, error, "callers rescuing Error still catch it"
+    end
   end
 end
