@@ -26,7 +26,7 @@
     </label>
     <label class="block">
       <span class="text-xs text-muted-foreground">Officer role (reviews applications)</span>
-      <%= f.select :officer_role_id, options_for_select(@role_options, @team.officer_role_id),
+      <%= f.select :officer_role_id, options_for_select(@officer_role_options, @team.officer_role_id),
             { include_blank: "Select a role…" }, class: "field w-full mt-1", required: true %>
     </label>
     <label class="block">
