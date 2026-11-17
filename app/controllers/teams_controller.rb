@@ -168,20 +168,31 @@ class TeamsController < ApplicationController
   # Role/channel pickers come from Discord over REST (bot token), cached
   # briefly. Empty lists (API down / bot missing / no token) block creation
   # safely.
+  #
+  # The two role pickers are filtered differently because the bot treats the
+  # roles differently. The team role is GRANTED (accept, manual sync), so it
+  # drops anything carrying a dangerous permission — a Manage-Server user must
+  # not be able to make the bot hand out Kick/Ban/Manage Roles. The officer
+  # role is never granted by the bot — it's only read (officer checks, the
+  # team_officers mirror) and pinged — and lead roles routinely carry exactly
+  # those moderator bits, so filtering it hid every lead role while protecting
+  # nothing. It keeps only the bot-managed/@everyone exclusion.
   def load_discord_options
     api = Discord::BotApi.new
     unless api.configured?
       @role_options = []
+      @officer_role_options = []
       @channel_options = []
       return
     end
 
+    roles = nil
+    fetch_roles = -> { roles ||= api.guild_roles(@guild.id) } # at most one REST call for both lists
     @role_options = Rails.cache.fetch("discord/role_options/#{@guild.id}", expires_in: 60.seconds) do
-      api.guild_roles(@guild.id)
-         .reject { |r| r["managed"] || r["id"].to_s == @guild.id.to_s } # bot-managed roles + @everyone
-         .reject { |r| Discord::Permissions.dangerous_role?(r) } # never assign Admin/Manage/Ban/Kick roles
-         .sort_by { |r| -r["position"].to_i }
-         .map { |r| [ r["name"], r["id"].to_s ] }
+      role_picker_options(fetch_roles.call.reject { |r| Discord::Permissions.dangerous_role?(r) }) # never assign Admin/Manage/Ban/Kick roles
+    end
+    @officer_role_options = Rails.cache.fetch("discord/officer_role_options/#{@guild.id}", expires_in: 60.seconds) do
+      role_picker_options(fetch_roles.call)
     end
     @channel_options = Rails.cache.fetch("discord/channel_options/#{@guild.id}", expires_in: 60.seconds) do
       api.guild_channels(@guild.id)
@@ -192,15 +203,22 @@ class TeamsController < ApplicationController
   rescue Discord::BotApi::Error => e
     Rails.logger.warn("[web] loading Discord options failed for guild #{@guild.id}: #{e.class}: #{e.message}")
     @role_options = []
+    @officer_role_options = []
     @channel_options = []
   end
 
+  def role_picker_options(roles)
+    roles.reject { |r| r["managed"] || r["id"].to_s == @guild.id.to_s } # bot-managed roles + @everyone
+         .sort_by { |r| -r["position"].to_i }
+         .map { |r| [ r["name"], r["id"].to_s ] }
+  end
+
   # The submitted ids must come from the fetched lists — rejects hand-crafted
-  # POSTs pointing the bot at arbitrary roles/channels.
+  # POSTs pointing the bot at arbitrary roles/channels (and, via the team-role
+  # list, at a dangerous role it would then grant).
   def valid_discord_choices?
-    role_ids = @role_options.map(&:last)
     @channel_options.map(&:last).include?(@team.review_channel_id.to_s) &&
-      role_ids.include?(@team.team_role_id.to_s) &&
-      role_ids.include?(@team.officer_role_id.to_s)
+      @role_options.map(&:last).include?(@team.team_role_id.to_s) &&
+      @officer_role_options.map(&:last).include?(@team.officer_role_id.to_s)
   end
 end
