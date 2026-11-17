@@ -51,4 +51,46 @@ class TeamQuestionsTest < ActionDispatch::IntegrationTest
     assert_match(/Description is too long/, flash[:alert])
     assert_empty questions
   end
+
+  test "the editor offers every question style, and an options box" do
+    get guild_team_path(@guild, @team)
+
+    assert_select "select[name=?]", "application_question[style]" do
+      assert_select "option[value=?]", "choice", text: "Multiple choice"
+      assert_select "option[value=?]", "checkboxes", text: "Checkboxes"
+      assert_select "option[value=?]", "yes_no", text: "Yes / No"
+    end
+    assert_select "textarea[name=?]", "application_question[options_text]"
+  end
+
+  test "adding a multiple-choice question saves its options" do
+    post guild_team_questions_path(@guild, @team), params: { application_question: {
+      label: "Main role", style: "choice", options_text: "Tank\r\nHealer\r\nDPS"
+    } }
+
+    question = questions.sole
+    assert question.choice?
+    assert_equal %w[Tank Healer DPS], question.options
+  end
+
+  test "a multiple-choice question with too few options is refused with the reason" do
+    post guild_team_questions_path(@guild, @team), params: { application_question: {
+      label: "Main role", style: "choice", options_text: "Tank"
+    } }
+
+    assert_redirected_to guild_team_path(@guild, @team)
+    assert_match(/Options need 2–10 for multiple choice/, flash[:alert])
+    assert_empty questions
+  end
+
+  test "switching a choice question back to text drops its options" do
+    question = ActsAsTenant.with_tenant(@guild) do
+      @team.application_questions.create!(key: "role", label: "Main role", style: :choice, options_text: "Tank\nHealer")
+    end
+
+    patch guild_team_question_path(@guild, @team, question), params: { application_question: { style: "short" } }
+
+    assert question.reload.short?
+    assert_empty question.options
+  end
 end

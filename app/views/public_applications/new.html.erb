@@ -46,24 +46,7 @@
         </label>
       <% end %>
       <% @questions.each do |question| %>
-        <label class="block">
-          <span class="text-xs text-muted-foreground">
-            <%= question.label %><%= " (optional)" unless question.required %>
-          </span>
-          <% if question.description.present? %>
-            <span class="block text-xs text-muted-foreground/80 mt-0.5"><%= question.description %></span>
-          <% end %>
-          <% options = { required: question.required, minlength: question.min_length,
-                         maxlength: question.max_length || ApplicationQuestion::VALUE_MAX,
-                         placeholder: question.placeholder.presence,
-                         id: nil, class: "field w-full mt-1" }.compact %>
-          <% value = @submitted&.dig("q:#{question.id}") %>
-          <% if question.paragraph? %>
-            <%= text_area_tag "application[q:#{question.id}]", value, rows: 4, **options %>
-          <% else %>
-            <%= text_field_tag "application[q:#{question.id}]", value, **options %>
-          <% end %>
-        </label>
+        <%= render "public_applications/question", question: question, value: @submitted&.dig("q:#{question.id}") %>
       <% end %>
       <div class="flex justify-end">
         <%= submit_tag "Send application", class: Ui::ButtonComponent.classes(variant: :gold) %>
