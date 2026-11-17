@@ -247,6 +247,18 @@ class PublicApplyTest < ActionDispatch::IntegrationTest
     assert_select "input[name=?]", "application[q:#{@question.id}]"
   end
 
+  test "the web form shows a question's description under its label" do
+    @question.update!(description: "Tell us which raids you've cleared.")
+    sign_in_as users(:member)
+
+    with_membership(true) do
+      get public_team_path(@guild.slug, @team.slug)
+    end
+
+    assert_response :success
+    assert_select "label", text: /Why join\?\s+Tell us which raids you've cleared\./
+  end
+
   test "a non-member can submit — the confirmation tells them to join the server" do
     @guild.update!(invite_url: "https://discord.gg/abc123")
     sign_in_as users(:member)

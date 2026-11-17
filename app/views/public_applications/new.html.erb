@@ -50,6 +50,9 @@
           <span class="text-xs text-muted-foreground">
             <%= question.label %><%= " (optional)" unless question.required %>
           </span>
+          <% if question.description.present? %>
+            <span class="block text-xs text-muted-foreground/80 mt-0.5"><%= question.description %></span>
+          <% end %>
           <% options = { required: question.required, minlength: question.min_length,
                          maxlength: question.max_length || ApplicationQuestion::VALUE_MAX,
                          placeholder: question.placeholder.presence,

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_100000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -61,6 +61,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_100000) do
 
   create_table "application_questions", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "description"
     t.bigint "guild_id", null: false
     t.string "key", null: false
     t.string "label", null: false
