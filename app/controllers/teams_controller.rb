@@ -1,7 +1,7 @@
 class TeamsController < ApplicationController
   include GuildScoping
-  # Creating teams is admin work; show and update are open to the team's leads
-  # too (update mirrors the bot's officer-level /team edit — but position is
+  # Creating and deleting teams is admin work; show and update are open to the
+  # team's leads too (update mirrors the bot's officer-level /team edit — but position is
   # stripped for non-managers there).
   before_action :require_guild_manager, except: %i[show update]
 
@@ -106,6 +106,21 @@ class TeamsController < ApplicationController
     else
       redirect_to guild_team_path(@guild, @team), alert: @team.errors.full_messages.to_sentence
     end
+  end
+
+  # Manage Server only (the before_action) — a lead can't delete their own
+  # team, just as /team edit can't. Typing the team's name is the confirmation:
+  # this takes every member's role and can't be undone, so a stray click or a
+  # forged request without it does nothing.
+  def destroy
+    @team = @guild.teams.find(params[:id])
+    unless params[:confirm_name].to_s.strip.casecmp?(@team.name.strip)
+      return redirect_to guild_team_path(@guild, @team), alert: "Type the team's name exactly to delete it."
+    end
+
+    Teams::Delete.call(team: @team, actor_id: current_user.discord_id)
+    redirect_to guild_path(@guild),
+                notice: "#{@team.name} was deleted. Its role is being removed from everyone who has it in the background."
   end
 
   private

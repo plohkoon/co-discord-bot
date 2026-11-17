@@ -319,3 +319,32 @@
   <% end %>
 <% end %>
 <% end %>
+
+<%# Manage Server only — the controller enforces the same. %>
+<% if can_manage? %>
+<%= render Ui::SectionComponent.new(title: "Delete team", classes: "mt-12") do %>
+  <%= form_with url: guild_team_path(@guild, @team), method: :delete,
+        data: { controller: "confirm-name", confirm_name_expected_value: @team.name },
+        class: "rounded-lg border border-light-red/40 bg-card p-4 space-y-3" do %>
+    <p class="text-sm text-foreground">
+      Deletes <span class="font-semibold"><%= @team.name %></span> and removes its team role from
+      everyone who has it (<%= pluralize(@counts["active"], "active member") %>).
+    </p>
+    <ul class="text-xs text-muted-foreground list-disc pl-5 space-y-1">
+      <li>Members, applications, notes, questions and call-outs are deleted. This can't be undone.</li>
+      <li>The Discord role itself stays — delete it in Server Settings if you don't need it.</li>
+      <li>Old review messages stay in the review channel; their buttons stop working.</li>
+    </ul>
+    <label class="block">
+      <span class="text-xs text-muted-foreground">Type <span class="text-foreground"><%= @team.name %></span> to confirm</span>
+      <%= text_field_tag :confirm_name, nil, autocomplete: "off", required: true, id: nil,
+            data: { confirm_name_target: "input", action: "input->confirm-name#check" },
+            class: "field w-full mt-1" %>
+    </label>
+    <div class="flex justify-end">
+      <%= submit_tag "Delete team", data: { confirm_name_target: "submit" },
+            class: Ui::ButtonComponent.classes(variant: :danger, extra: "border border-light-red/40 disabled:cursor-not-allowed enabled:bg-light-red enabled:text-black") %>
+    </div>
+  <% end %>
+<% end %>
+<% end %>
