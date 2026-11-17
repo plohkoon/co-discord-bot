@@ -39,7 +39,7 @@ class TeamQuestionsController < ApplicationController
   # generated from the label on create, so rewording a question keeps answers linked.
   def question_params
     params.require(:application_question)
-          .permit(:label, :description, :placeholder, :style, :required, :min_length, :max_length)
+          .permit(:label, :description, :placeholder, :style, :required, :min_length, :max_length, :options_text)
   end
 
   def generate_key(label)

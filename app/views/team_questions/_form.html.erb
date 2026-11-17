@@ -3,12 +3,17 @@
   <%= form_with model: question,
         url: (question.persisted? ? guild_team_question_path(guild, team, question) : guild_team_questions_path(guild, team)),
         method: (question.persisted? ? :patch : :post),
-        scope: :application_question, class: "space-y-2" do |f| %>
+        scope: :application_question, class: "space-y-2",
+        data: { controller: "question-form" } do |f| %>
     <div class="flex items-center gap-2">
       <%= f.text_field :label, placeholder: "Question (max #{ApplicationQuestion::LABEL_MAX} chars)",
             maxlength: ApplicationQuestion::LABEL_MAX, class: "field flex-1 min-w-0" %>
-      <%= f.select :style, [ [ "Short", "short" ], [ "Paragraph", "paragraph" ] ], {}, class: "field w-auto shrink-0" %>
-      <label class="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 px-1">
+      <%= f.select :style, ApplicationQuestion.style_options, {}, class: "field w-auto shrink-0",
+            data: { question_form_target: "style", action: "question-form#toggle" } %>
+      <%# A yes/no question is a single Discord checkbox, which can't be
+          required — unticked just answers "No". %>
+      <label class="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 px-1"
+             data-question-form-target="field" data-styles="short paragraph choice checkboxes">
         <%= f.check_box :required, class: "field-checkbox" %> Required
       </label>
     </div>
@@ -17,10 +22,17 @@
     <%= f.text_field :description,
           placeholder: "Description shown under the question — for longer prompts (optional, max #{ApplicationQuestion::DESCRIPTION_MAX} chars)",
           maxlength: ApplicationQuestion::DESCRIPTION_MAX, class: "field w-full" %>
-    <div class="flex items-center gap-2">
+    <div data-question-form-target="field" data-styles="short paragraph">
       <%= f.text_field :placeholder, placeholder: "Placeholder hint (optional)",
-            maxlength: ApplicationQuestion::PLACEHOLDER_MAX, class: "field flex-1 min-w-0" %>
-      <%= f.submit (question.persisted? ? "Save" : "Add"), class: "#{Ui::ButtonComponent.classes(variant: :gold)} shrink-0" %>
+            maxlength: ApplicationQuestion::PLACEHOLDER_MAX, class: "field w-full" %>
+    </div>
+    <div data-question-form-target="field" data-styles="choice checkboxes">
+      <%= f.text_area :options_text, rows: 4,
+            placeholder: "One option per line — #{ApplicationQuestion::CHOICE_MIN}–#{ApplicationQuestion::OPTIONS_MAX} for multiple choice, up to #{ApplicationQuestion::OPTIONS_MAX} for checkboxes (max #{ApplicationQuestion::OPTION_MAX} chars each)",
+            class: "field w-full" %>
+    </div>
+    <div class="flex justify-end">
+      <%= f.submit (question.persisted? ? "Save" : "Add"), class: Ui::ButtonComponent.classes(variant: :gold) %>
     </div>
   <% end %>
 
