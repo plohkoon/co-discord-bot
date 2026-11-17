@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
 # The Delete team button stays disabled until the team's name is typed
-# (confirm_name_controller.js), then deletes the team.
+# (confirm_name_controller.js), then asks once more before deleting.
 class TeamDeleteSystemTest < ApplicationSystemTestCase
   setup do
     @guild = Guild.create!(id: 555_000_111_222_333_666, name: "Raid Server")
@@ -40,10 +40,23 @@ class TeamDeleteSystemTest < ApplicationSystemTestCase
       fill_in "confirm_name", with: "Alpha"
       assert_button "Delete team", disabled: true
       fill_in "confirm_name", with: "alpha team"
-      click_on "Delete team"
+      message = accept_confirm { click_on "Delete team" }
 
+      assert_match(/Delete Alpha Team\?/, message)
       assert_text "Alpha Team was deleted"
       assert_not ActsAsTenant.with_tenant(@guild) { Team.exists?(@team.id) }
+    end
+  end
+
+  test "cancelling the confirmation deletes nothing" do
+    signed_in_as_manager do
+      visit guild_team_path(@guild, @team)
+
+      fill_in "confirm_name", with: "Alpha Team"
+      dismiss_confirm { click_on "Delete team" }
+
+      assert_current_path guild_team_path(@guild, @team)
+      assert ActsAsTenant.with_tenant(@guild) { Team.exists?(@team.id) }
     end
   end
 end
