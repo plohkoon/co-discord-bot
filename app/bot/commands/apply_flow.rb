@@ -29,20 +29,42 @@ module Commands
 
         questions.each do |question|
           modal.label(label: question.label, description: question.description.presence) do |label|
-            label.text_input(
-              style: question.paragraph? ? :paragraph : :short,
-              custom_id: "q:#{question.id}",
-              required: question.required,
-              min_length: question.min_length,
-              max_length: question.max_length,
-              placeholder: question.placeholder.presence
-            )
+            question_input(label, question)
           end
         end
       end
     end
 
     private
+
+    # One Label child per question style. Options are passed as plain
+    # value/label hashes (the label doubles as the value) rather than through
+    # discordrb's builder, which would send `description: null, default: null`
+    # on every option.
+    def question_input(label, question)
+      custom_id = "q:#{question.id}"
+      options = question.options.map { |option| { value: option, label: option } }
+
+      case question.style
+      when "choice"
+        label.radio_group(custom_id: custom_id, buttons: options, required: question.required)
+      when "checkboxes"
+        # Discord defaults min_values to 1; an optional group must allow 0.
+        label.checkbox_group(custom_id: custom_id, checkboxes: options, required: question.required,
+                             min_values: (0 unless question.required))
+      when "yes_no"
+        label.checkbox(custom_id: custom_id)
+      else
+        label.text_input(
+          style: question.paragraph? ? :paragraph : :short,
+          custom_id: custom_id,
+          required: question.required,
+          min_length: question.min_length,
+          max_length: question.max_length,
+          placeholder: question.placeholder.presence
+        )
+      end
+    end
 
     def member_of?(team)   = team.team_memberships.active.where(discord_user_id: current_user_id).exists?
     def pending_for?(team) = team.team_memberships.pending.where(discord_user_id: current_user_id).exists?

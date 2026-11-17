@@ -1,0 +1,56 @@
+<%# One application question on the web form, mirroring the Discord modal's
+    component for its style. Choice questions are fieldsets (a <label> can't
+    wrap a group of inputs); everything posts as application[q:<id>], with
+    checkbox questions as an array. Needs question, value (the re-render
+    answer: a String, or an Array for checkboxes). %>
+<% name = "application[q:#{question.id}]" %>
+<% heading = capture do %>
+  <span class="text-xs text-muted-foreground">
+    <%= question.label %><%= " (optional)" unless question.required || question.yes_no? %>
+  </span>
+  <% if question.description.present? %>
+    <span class="block text-xs text-muted-foreground/80 mt-0.5"><%= question.description %></span>
+  <% end %>
+<% end %>
+
+<% if question.multiple_choice? %>
+  <fieldset class="block">
+    <legend><%= heading %></legend>
+    <div class="mt-1.5 space-y-1.5">
+      <% question.options.each do |option| %>
+        <label class="flex items-center gap-2 text-sm text-foreground">
+          <% if question.choice? %>
+            <%= radio_button_tag name, option, value == option, id: nil, required: question.required,
+                  class: "field-checkbox rounded-full" %>
+          <% else %>
+            <%= check_box_tag "#{name}[]", option, Array(value).include?(option), id: nil, class: "field-checkbox" %>
+          <% end %>
+          <%= option %>
+        </label>
+      <% end %>
+    </div>
+  </fieldset>
+<% elsif question.yes_no? %>
+  <div class="block">
+    <%= heading %>
+    <label class="mt-1.5 flex items-center gap-2 text-sm text-foreground">
+      <%# The hidden "0" makes an unticked box submit an explicit "No". %>
+      <%= hidden_field_tag name, "0", id: nil %>
+      <%= check_box_tag name, "1", value == "1", id: nil, class: "field-checkbox" %>
+      <%= ApplicationQuestion::YES %>
+    </label>
+  </div>
+<% else %>
+  <label class="block">
+    <%= heading %>
+    <% options = { required: question.required, minlength: question.min_length,
+                   maxlength: question.max_length || ApplicationQuestion::VALUE_MAX,
+                   placeholder: question.placeholder.presence,
+                   id: nil, class: "field w-full mt-1" }.compact %>
+    <% if question.paragraph? %>
+      <%= text_area_tag name, value, rows: 4, **options %>
+    <% else %>
+      <%= text_field_tag name, value, **options %>
+    <% end %>
+  </label>
+<% end %>

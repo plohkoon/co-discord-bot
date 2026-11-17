@@ -39,7 +39,7 @@ module Applications
             position: i,
             question_key: question.key,
             question_label: question.label,
-            answer: @event.value("q:#{question.id}").to_s
+            answer: question.answer_from(@event)
           )
         end
 

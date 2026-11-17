@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_110000) do
   create_table "absence_digests", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "digest_on", null: false
@@ -67,6 +67,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_100000) do
     t.string "label", null: false
     t.integer "max_length"
     t.integer "min_length"
+    t.text "options"
     t.string "placeholder"
     t.integer "position", default: 0, null: false
     t.boolean "required", default: true, null: false

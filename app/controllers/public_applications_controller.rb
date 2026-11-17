@@ -119,10 +119,21 @@ class PublicApplicationsController < PublicBaseController
     raw = params[:application]
     form = raw.is_a?(ActionController::Parameters) ? raw : {}
     values = @team.application_questions.ordered.to_h do |q|
-      [ "q:#{q.id}", clamp(form["q:#{q.id}"], q.max_length || ApplicationQuestion::VALUE_MAX) ]
+      [ "q:#{q.id}", submitted_answer(q, form["q:#{q.id}"]) ]
     end
     values["character"] = clamp(form["character"], CHARACTER_INPUT_MAX) if @team.collect_character?
     values
+  end
+
+  # Choice answers are narrowed to the question's own options here, not just
+  # at save time, so a crafted value can't satisfy the required check above.
+  def submitted_answer(question, raw)
+    case question.style
+    when "choice"     then (question.options & [ raw.to_s ]).first.to_s
+    when "checkboxes" then question.options & (raw.is_a?(Array) ? raw.map(&:to_s) : [])
+    when "yes_no"     then raw.to_s == "1" ? "1" : "0"
+    else clamp(raw, question.max_length || ApplicationQuestion::VALUE_MAX)
+    end
   end
 
   def clamp(value, limit) = value.to_s[0, limit].to_s
