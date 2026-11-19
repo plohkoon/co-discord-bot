@@ -70,7 +70,10 @@ Rails.application.routes.draw do
     resources :absences, only: :destroy
     resources :teams, only: %i[new create show update destroy] do
       resources :questions, only: %i[create update destroy], controller: "team_questions"
-      resources :memberships, only: :show do
+      # Every application in one table (a column per question), and as CSV.
+      resources :applications, only: :index, controller: "team_applications"
+      # index is the members CSV export; the list itself is on the team page.
+      resources :memberships, only: %i[index show] do
         post :remove, on: :member
         # Which character this member raids as on THIS team — a lead's call,
         # distinct from the member's own main.

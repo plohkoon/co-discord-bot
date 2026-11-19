@@ -60,6 +60,10 @@ gem "omniauth-rails_csrf_protection"
 gem "acts_as_tenant"
 # Reusable, testable view components (the UI design system)
 gem "view_component"
+
+# Team application / member exports. A bundled gem since Ruby 3.4, so it must be
+# declared to be requireable.
+gem "csv"
 # Continuous SQLite replication/backups [https://github.com/fractaledmind/litestream-ruby]
 gem "litestream"
 
