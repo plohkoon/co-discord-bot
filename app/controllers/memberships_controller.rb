@@ -2,7 +2,18 @@ class MembershipsController < ApplicationController
   include GuildScoping
   before_action :set_team
   before_action :require_team_access
-  before_action :set_membership
+  before_action :set_membership, except: :index
+
+  # The whole team as CSV — the list itself lives on the team page.
+  def index
+    respond_to do |format|
+      format.html { redirect_to guild_team_path(@guild, @team) }
+      format.csv do
+        send_data Teams::MembersReport.new(@team).to_csv,
+                  filename: Teams::CsvExport.filename(@team, "members"), type: "text/csv"
+      end
+    end
+  end
 
   def show
     @applications = @membership.team_applications.includes(:application_answers).recent

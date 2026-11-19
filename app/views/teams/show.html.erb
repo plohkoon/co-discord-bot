@@ -257,6 +257,14 @@
 
 <%= render Ui::SectionComponent.new(title: "Members", classes: "mb-12") do %>
   <% ordered = @members_by_status.values_at("pending", "active", "archived").compact.flatten %>
+  <div class="flex flex-wrap gap-2 mb-3">
+    <%= link_to "All applications", guild_team_applications_path(@guild, @team),
+          class: Ui::ButtonComponent.classes(variant: :outline, size: :sm) %>
+    <%= link_to "Export members (CSV)", guild_team_memberships_path(@guild, @team, format: :csv),
+          class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+    <%= link_to "Export applications (CSV)", guild_team_applications_path(@guild, @team, format: :csv),
+          class: Ui::ButtonComponent.classes(variant: :ghost, size: :sm) %>
+  </div>
   <% if ordered.empty? %>
     <%= render Ui::EmptyStateComponent.new do %>
       No members yet. They'll appear here when people apply or receive the team role.
